@@ -104,13 +104,6 @@ public class AuthController {
     }
 
 
-
-    @GetMapping("/auth-check")
-    public String checkAuthentication() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return "User: " + auth.getName() + ", Roles: " + auth.getAuthorities();
-    }
-
     @PostMapping("/custom-logout")
     public ResponseEntity<String> logout(HttpSession session) {
         session.invalidate();

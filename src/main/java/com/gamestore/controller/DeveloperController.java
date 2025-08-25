@@ -39,12 +39,9 @@
 	    }
 
         @PostMapping("/games/add")
-        public GameDTO addGame(
-                @RequestBody GameDTO gameDTO,
-                @AuthenticationPrincipal UserDetails userDetails) {
+        public GameDTO addGame(@RequestBody GameDTO gameDTO, HttpSession session) {
 
-            User developer = userService.findByUsername(userDetails.getUsername())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            User developer = getSessionUser(session);
 
             if (developer.getRole() != Role.DEVELOPER) {
                 throw new RuntimeException("User does not have permission to add games.");
@@ -57,6 +54,7 @@
                     developer
             );
         }
+
 
 
         @PutMapping("/games/{gameId}")
