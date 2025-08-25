@@ -18,7 +18,8 @@ import java.util.stream.Collectors;
 public class UserService {
     @Autowired private UserRepository userRepository;
     @Autowired private ModelMapper modelMapper;
-    @Autowired private BCryptPasswordEncoder passwordEncoder;  
+    @Autowired private BCryptPasswordEncoder passwordEncoder;
+
     public UserDTO registerUser(String username, String password, Role role) {
         if (userRepository.findByUsername(username).isPresent()) {
             throw new RuntimeException("Username already exists");

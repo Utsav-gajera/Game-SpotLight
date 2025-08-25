@@ -75,4 +75,29 @@ public class GameService {
         gameRepository.deleteById(gameId);
     }
 
+
+    public List<GameDTO> searchByTitle(String title) {
+        return gameRepository.findByTitleContainingIgnoreCase(title)
+                .stream().map(g -> modelMapper.map(g, GameDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    public List<GameDTO> filterByGenre(String genre) {
+        return gameRepository.findByGenreIgnoreCase(genre)
+                .stream().map(g -> modelMapper.map(g, GameDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    public List<GameDTO> filterByPriceRange(Double min, Double max) {
+        return gameRepository.findByPriceBetween(min, max)
+                .stream().map(g -> modelMapper.map(g, GameDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    public List<GameDTO> advancedSearch(String title, String genre, Double min, Double max) {
+        return gameRepository.searchGames(title, genre, min, max)
+                .stream().map(g -> modelMapper.map(g, GameDTO.class))
+                .collect(Collectors.toList());
+    }
+
 }
