@@ -23,6 +23,14 @@ public class PurchaseService {
 
     public String purchaseGame(User user, Long gameId) {
         Game game = gameRepository.findById(gameId).orElseThrow(() -> new RuntimeException("Game not found"));
+
+        boolean alreadyPurchased = purchaseRepository
+                .existsByUserAndGame(user, game);
+
+        if (alreadyPurchased) {
+            throw new RuntimeException("You have already purchased this game!");
+        }
+
         Purchase purchase = new Purchase();
         purchase.setUser(user);
         purchase.setGame(game);
