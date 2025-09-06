@@ -1,8 +1,6 @@
 package com.gamestore.service;
 
-import com.gamestore.dto.GameDTO;
 import com.gamestore.dto.PurchaseDTO;
-
 import com.gamestore.entity.Game;
 import com.gamestore.entity.Purchase;
 import com.gamestore.entity.User;
@@ -22,13 +20,13 @@ public class PurchaseService {
     @Autowired private ModelMapper modelMapper;
 
     public String purchaseGame(User user, Long gameId) {
-        Game game = gameRepository.findById(gameId).orElseThrow(() -> new RuntimeException("Game not found"));
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new IllegalArgumentException("Game not found"));
 
-        boolean alreadyPurchased = purchaseRepository
-                .existsByUserAndGame(user, game);
-
+        boolean alreadyPurchased = purchaseRepository.existsByUserAndGame(user, game);
         if (alreadyPurchased) {
-            throw new RuntimeException("You have already purchased this game!");
+            // controllers will map "already" -> 409 Conflict
+            throw new IllegalArgumentException("You have already purchased this game!");
         }
 
         Purchase purchase = new Purchase();
@@ -43,13 +41,18 @@ public class PurchaseService {
         return purchaseRepository.findByUser(user).stream().map(purchase -> {
             PurchaseDTO dto = modelMapper.map(purchase, PurchaseDTO.class);
             dto.setUsername(purchase.getUser().getUsername());
+            if (purchase.getGame() != null) {
+                dto.setGameTitle(purchase.getGame().getTitle());
+            } else {
+                dto.setGameTitle(null);
+            }
             return dto;
         }).collect(Collectors.toList());
     }
 
     private PurchaseDTO convertToDTO(Purchase purchase) {
         PurchaseDTO dto = modelMapper.map(purchase, PurchaseDTO.class);
-        dto.setGameTitle(purchase.getGame().getTitle());
+        if (purchase.getGame() != null) dto.setGameTitle(purchase.getGame().getTitle());
         dto.setUsername(purchase.getUser().getUsername());
         return dto;
     }
@@ -59,5 +62,4 @@ public class PurchaseService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
-
 }
