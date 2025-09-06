@@ -1,10 +1,5 @@
 package com.gamestore.entity;
 
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-
-import com.fasterxml.jackson.annotation.JsonBackReference;
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,10 +7,15 @@ import lombok.Setter;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 @Getter
 @Setter
 @Entity
-@Table(name = "wishlist")
+// Unique constraint to prevent two wishlists with same name for same user
+@Table(name = "wishlist", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"user_id", "name"})
+})
 public class Wishlist {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,12 +23,16 @@ public class Wishlist {
 
     private String name;
 
-    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.DETACH})
+    @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("user-wishlist")
     private User user;
 
-
+    /*
+      ManyToMany to Game:
+      - Do NOT use CascadeType.REMOVE here — a wishlist should never delete a game entity.
+      - We could allow PERSIST/MERGE if you sometimes create new Game through wishlist (usually not needed).
+    */
     @ManyToMany
     @JoinTable(
             name = "wishlist_games",
@@ -36,7 +40,6 @@ public class Wishlist {
             inverseJoinColumns = @JoinColumn(name = "game_id")
     )
     private Set<Game> games = new HashSet<>();
-
 
     public Long getId() {
         return id;

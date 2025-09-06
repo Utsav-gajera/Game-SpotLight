@@ -9,5 +9,7 @@ import java.util.Optional;
 
 public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
     List<Wishlist> findByUser(User user);
+
+    boolean existsByUserAndName(User user, String wishlistName);
 }
 
