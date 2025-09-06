@@ -1,9 +1,10 @@
 package com.gamestore.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
 
 @Getter
 @Setter
@@ -24,14 +25,13 @@ public class Game {
     @Column(nullable = false)
     private double price;
 
-    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.DETACH})
+    // Developer (User) owning this game.
+    // When a developer (User) is removed, cascade remove their games (because of User.games mapping).
+    @ManyToOne
     @JoinColumn(name = "developer_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("user-games")
     private User developer;
 
-
-
-    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -71,6 +71,4 @@ public class Game {
     public void setDeveloper(User developer) {
         this.developer = developer;
     }
-
-
 }
