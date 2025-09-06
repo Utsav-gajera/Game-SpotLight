@@ -47,12 +47,6 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
 
-    @GetMapping("/all")
-    public ResponseEntity<List<UserDTO>> getAllUsers(HttpSession session) {
-        // ensure caller is authenticated
-        getSessionUser(session);
-        return ResponseEntity.ok(userService.getAllUsers());
-    }
 
     @GetMapping("/games")
     public ResponseEntity<List<GameDTO>> viewAllGames() {
@@ -163,43 +157,12 @@ public class UserController {
         User user = getSessionUser(session);
         return ResponseEntity.ok(userService.convertToDTO(user));
     }
+    
 
-    /* -------------------------
-       Exception handlers
-       ------------------------- */
 
-    /**
-     * Map IllegalArgumentException messages to appropriate HTTP status codes.
-     * - "not found", "not in wishlist", "does not exist" -> 404
-     * - "exists", "already", "duplicate" -> 409
-     * - otherwise -> 400
-     */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
-        String msg = (ex.getMessage() == null) ? "" : ex.getMessage().toLowerCase();
-        if (msg.contains("not found") || msg.contains("not in wishlist") || msg.contains("does not exist")) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
-        }
-        if (msg.contains("exists") || msg.contains("already") || msg.contains("duplicate")) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
-        }
-        return ResponseEntity.badRequest().body(ex.getMessage());
-    }
 
-    /**
-     * Security-related failures (if thrown as SecurityException) -> 403 Forbidden
-     */
-    @ExceptionHandler(SecurityException.class)
-    public ResponseEntity<String> handleSecurity(SecurityException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
-    }
 
-    /**
-     * Generic fallback -> 500 Internal Server Error
-     */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleServerError(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Server error: " + ex.getMessage());
-    }
+
+
+
 }

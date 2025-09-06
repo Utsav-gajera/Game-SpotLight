@@ -24,27 +24,34 @@ public class SecurityConfig {
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
 
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authenticationProvider(authenticationProvider())
+                // NOTE: CSRF is disabled to match your current login flow which posts credentials to /api/auth/login.
+                // If you switch to cookie-based session storage in production, consider enabling CSRF and passing tokens.
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**","/api/user/**","/api/admin/**","/api/developer/**").permitAll()
-                        .requestMatchers("/api/auth/custom-logout").permitAll()
+                        // allow unauthenticated access to authentication endpoints and public listing endpoints
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/all/**").permitAll()
+                        // role protected endpoints — controllers also validate the session 'user'
+                        .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                        .requestMatchers("/api/developer/**").hasAuthority("DEVELOPER")
+                        .requestMatchers("/api/user/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout
+                        // keep default logout if needed; your AuthController implements custom-logout endpoint
                         .logoutUrl("/api/auth/logout")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .clearAuthentication(true)
                         .permitAll()
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                .csrf(csrf -> csrf.disable());
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
 
         return http.build();
     }
@@ -66,4 +73,6 @@ public class SecurityConfig {
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+
 }

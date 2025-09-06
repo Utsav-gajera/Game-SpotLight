@@ -1,6 +1,5 @@
 package com.gamestore.controller;
 
-import ch.qos.logback.core.net.SyslogOutputStream;
 import com.gamestore.dto.LoginRequest;
 
 import com.gamestore.dto.RegisterRequest;
@@ -14,7 +13,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,22 +27,17 @@ public class AuthController {
     
     @Autowired 
     private AuthenticationManager authenticationManager;
-    
-    @Autowired 
-    private CustomUserDetailsService userDetailsService;
-    
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequest registerRequest,HttpSession session) {
         if(registerRequest.getRole().equals("ADMIN")) {
-            return ResponseEntity.ok("You can not register as ADMIN");
+            return ResponseEntity.status(403).body("You can not register as ADMIN");
         }
 
         User existingUser = (User) session.getAttribute("user");
 
-        if(registerRequest.getUsername().equals(existingUser.getUsername())){
+        if(existingUser != null && registerRequest.getUsername().equals(existingUser.getUsername())){
             return ResponseEntity.badRequest().body("Registration failed: You are already logged in" );
         }
 
