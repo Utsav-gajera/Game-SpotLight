@@ -40,11 +40,6 @@ public class DeveloperController {
     public ResponseEntity<?> addGame(@RequestBody GameDTO gameDTO, HttpSession session) {
         User developer = getSessionUser(session);
 
-        if (developer.getRole() != Role.DEVELOPER) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("User does not have permission to add games.");
-        }
-
         GameDTO created = gameService.addGame(
                 gameDTO.getTitle(),
                 gameDTO.getGenre(),
@@ -103,13 +98,4 @@ public class DeveloperController {
         return ResponseEntity.ok(userService.convertToDTO(user));
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(ex.getMessage());
-    }
-
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<String> handleServerError(RuntimeException ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
-    }
 }

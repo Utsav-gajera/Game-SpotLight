@@ -40,18 +40,10 @@ public class AdminController {
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
     }
 
-    private ResponseEntity<String> checkAdmin(User user) {
-        if (user.getRole() != Role.ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied: admin only.");
-        }
-        return null; // OK
-    }
+
 
     @GetMapping("/users")
     public ResponseEntity<?> getAllUsers(HttpSession session) {
-        User user = getSessionUser(session);
-        ResponseEntity<String> denied = checkAdmin(user);
-        if (denied != null) return denied;
 
         List<UserDTO> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
@@ -59,9 +51,6 @@ public class AdminController {
 
     @GetMapping("/games")
     public ResponseEntity<?> getAllGames(HttpSession session) {
-        User user = getSessionUser(session);
-        ResponseEntity<String> denied = checkAdmin(user);
-        if (denied != null) return denied;
 
         List<GameDTO> games = gameService.getAllGames();
         return ResponseEntity.ok(games);
@@ -69,9 +58,7 @@ public class AdminController {
 
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<?> deleteUser(@PathVariable Long userId, HttpSession session) {
-        User user = getSessionUser(session);
-        ResponseEntity<String> denied = checkAdmin(user);
-        if (denied != null) return denied;
+
 
         userService.deleteUser(userId);
         return ResponseEntity.noContent().build();
@@ -79,9 +66,7 @@ public class AdminController {
 
     @DeleteMapping("/games/{gameId}")
     public ResponseEntity<?> deleteGame(@PathVariable Long gameId, HttpSession session) {
-        User user = getSessionUser(session);
-        ResponseEntity<String> denied = checkAdmin(user);
-        if (denied != null) return denied;
+
 
         gameService.deleteGame(gameId);
         return ResponseEntity.noContent().build();
@@ -89,9 +74,7 @@ public class AdminController {
 
     @GetMapping("/purchases")
     public ResponseEntity<?> getAllPurchases(HttpSession session) {
-        User user = getSessionUser(session);
-        ResponseEntity<String> denied = checkAdmin(user);
-        if (denied != null) return denied;
+
 
         List<PurchaseDTO> purchases = purchaseService.getAllPurchases();
         return ResponseEntity.ok(purchases);
@@ -104,14 +87,5 @@ public class AdminController {
         return ResponseEntity.ok(dto);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(ex.getMessage());
-    }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<String> handleServerError(RuntimeException ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Server error: " + ex.getMessage());
-    }
 }
