@@ -111,18 +111,5 @@ public class AllController {
         return ResponseEntity.ok(all);
     }
 
-    /* -------------------------
-       Exception handlers
-       ------------------------- */
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(ex.getMessage());
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleServerError(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("An unexpected error occurred: " + ex.getMessage());
-    }
 }
