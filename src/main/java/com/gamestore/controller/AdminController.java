@@ -32,9 +32,7 @@ public class AdminController {
     private User getSessionUser(HttpSession session) {
         if (session == null) throw new IllegalArgumentException("No session present.");
         Object userObj = session.getAttribute("user");
-        if (userObj == null || !(userObj instanceof User)) {
-            throw new IllegalArgumentException("Not authenticated.");
-        }
+
         User sessionUser = (User) userObj;
         return userService.findByUsername(sessionUser.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));

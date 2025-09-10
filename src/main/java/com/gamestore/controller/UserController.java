@@ -33,18 +33,9 @@ public class UserController {
     private User getSessionUser(HttpSession session) {
         if (session == null) throw new IllegalArgumentException("No session present.");
         Object userObj = session.getAttribute("user");
-        if (userObj == null || !(userObj instanceof User)) {
-            throw new IllegalArgumentException("Not authenticated.");
-        }
         User sessionUser = (User) userObj;
         return userService.findByUsername(sessionUser.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
-    }
-
-    @GetMapping("/us")
-    public ResponseEntity<User> getSessionUserEndpoint(HttpSession session) {
-        User user = getSessionUser(session);
-        return ResponseEntity.ok(user);
     }
 
 
@@ -56,13 +47,8 @@ public class UserController {
     @PostMapping("/wishlist/create")
     public ResponseEntity<?> createWishlist(@RequestParam String name, HttpSession session) {
         User user = getSessionUser(session);
-        try {
-            WishlistDTO wishlist = wishlistService.createWishlist(user, name);
-            return ResponseEntity.status(HttpStatus.CREATED).body(wishlist);
-        } catch (IllegalArgumentException ex) {
-            // Duplicate name or other validation -> map to 409 or 400 via handler
-            throw ex;
-        }
+        WishlistDTO wishlist = wishlistService.createWishlist(user, name);
+        return ResponseEntity.status(HttpStatus.CREATED).body(wishlist);
     }
 
     @PostMapping("/wishlist/{wishlistId}/add/{gameId}")

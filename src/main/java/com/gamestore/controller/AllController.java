@@ -23,9 +23,6 @@ public class AllController {
      */
     @GetMapping("/games/search")
     public ResponseEntity<List<GameDTO>> searchByTitle(@RequestParam String title) {
-        if (title == null || title.trim().isEmpty()) {
-            throw new IllegalArgumentException("Query parameter 'title' must not be empty.");
-        }
         List<GameDTO> results = gameService.searchByTitle(title.trim());
         return ResponseEntity.ok(results);
     }
@@ -33,13 +30,10 @@ public class AllController {
     /**
      * Filter by genre.
      * - 200 OK with results (possibly empty)
-     * - 400 BAD REQUEST if genre param is empty
      */
     @GetMapping("/games/genre")
     public ResponseEntity<List<GameDTO>> filterByGenre(@RequestParam String genre) {
-        if (genre == null || genre.trim().isEmpty()) {
-            throw new IllegalArgumentException("Query parameter 'genre' must not be empty.");
-        }
+
         List<GameDTO> results = gameService.filterByGenre(genre.trim());
         return ResponseEntity.ok(results);
     }
