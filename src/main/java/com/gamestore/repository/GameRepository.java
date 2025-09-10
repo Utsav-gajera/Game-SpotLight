@@ -28,4 +28,5 @@ public interface GameRepository extends JpaRepository<Game, Long> {
                            @Param("genre") String genre,
                            @Param("minPrice") Double minPrice,
                            @Param("maxPrice") Double maxPrice);
+
 }

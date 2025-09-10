@@ -75,6 +75,7 @@ public class AllController {
      * - 200 OK with results (possibly empty)
      * - 400 BAD REQUEST if minPrice > maxPrice
      */
+
     @GetMapping("/games/filter")
     public ResponseEntity<List<GameDTO>> advancedSearch(
             @RequestParam(required = false) String title,
