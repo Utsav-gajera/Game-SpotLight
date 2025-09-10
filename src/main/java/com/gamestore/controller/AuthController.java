@@ -1,6 +1,5 @@
 package com.gamestore.controller;
 
-import ch.qos.logback.core.net.SyslogOutputStream;
 import com.gamestore.dto.LoginRequest;
 
 import com.gamestore.dto.RegisterRequest;
@@ -14,7 +13,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,22 +27,17 @@ public class AuthController {
     
     @Autowired 
     private AuthenticationManager authenticationManager;
-    
-    @Autowired 
-    private CustomUserDetailsService userDetailsService;
-    
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequest registerRequest,HttpSession session) {
         if(registerRequest.getRole().equals("ADMIN")) {
-            return ResponseEntity.ok("You can not register as ADMIN");
+            return ResponseEntity.status(403).body("You can not register as ADMIN");
         }
 
         User existingUser = (User) session.getAttribute("user");
 
-        if(registerRequest.getUsername().equals(existingUser.getUsername())){
+        if(existingUser != null && registerRequest.getUsername().equals(existingUser.getUsername())){
             return ResponseEntity.badRequest().body("Registration failed: You are already logged in" );
         }
 
@@ -67,9 +60,6 @@ public class AuthController {
         try {
             // check if someone is already logged in
             User existingUser = (User) session.getAttribute("user");
-
-
-
             if (existingUser != null) {
                 if(existingUser.getUsername().equals(loginRequest.getUsername())){
                     return ResponseEntity.badRequest()
@@ -90,7 +80,7 @@ public class AuthController {
 
             session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
 
-            System.out.println("Authentication successful for user: " + authentication.getName());
+//            System.out.println("Authentication successful for user: " + authentication.getName());
 
             User user = userService.findByUsername(loginRequest.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -98,18 +88,10 @@ public class AuthController {
 
             return ResponseEntity.ok("Login successful!");
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Login failed: " + e.getMessage());
         }
     }
 
-
-
-    @GetMapping("/auth-check")
-    public String checkAuthentication() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return "User: " + auth.getName() + ", Roles: " + auth.getAuthorities();
-    }
 
     @PostMapping("/custom-logout")
     public ResponseEntity<String> logout(HttpSession session) {
