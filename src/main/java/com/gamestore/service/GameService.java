@@ -46,7 +46,7 @@ public class GameService {
     }
 
 
-    public GameDTO updateGame(Long gameId, String title, String genre, Double price,User developer) {
+    public void updateGame(Long gameId, String title, String genre, Double price, User developer) {
         Game existingGame = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
 
@@ -67,7 +67,7 @@ public class GameService {
         }
 
         existingGame = gameRepository.save(existingGame);
-        return convertToDTO(existingGame);
+        convertToDTO(existingGame);
     }
 
 
