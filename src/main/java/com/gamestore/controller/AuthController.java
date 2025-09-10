@@ -60,9 +60,6 @@ public class AuthController {
         try {
             // check if someone is already logged in
             User existingUser = (User) session.getAttribute("user");
-
-
-
             if (existingUser != null) {
                 if(existingUser.getUsername().equals(loginRequest.getUsername())){
                     return ResponseEntity.badRequest()
@@ -83,7 +80,7 @@ public class AuthController {
 
             session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
 
-            System.out.println("Authentication successful for user: " + authentication.getName());
+//            System.out.println("Authentication successful for user: " + authentication.getName());
 
             User user = userService.findByUsername(loginRequest.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -91,7 +88,6 @@ public class AuthController {
 
             return ResponseEntity.ok("Login successful!");
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Login failed: " + e.getMessage());
         }
     }
