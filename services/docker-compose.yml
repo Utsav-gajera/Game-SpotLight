@@ -1,0 +1,88 @@
+# Docker Compose for local development of the microservices.
+# MongoDB is hosted on Atlas, so each service reads its Atlas connection string from its .env file.
+
+services:
+  auth-user:
+    build:
+      context: ./auth-user-service
+    env_file:
+      - ./auth-user-service/.env
+    dns:
+      - 8.8.8.8
+    ports:
+      - "8081:8081"
+
+  game:
+    build:
+      context: ./game-service
+    env_file:
+      - ./game-service/.env
+    dns:
+      - 8.8.8.8
+    environment:
+      STORAGE_SERVICE_URL: http://storage:8085/api
+    ports:
+      - "8082:8082"
+
+  purchase:
+    build:
+      context: ./purchase-service
+    env_file:
+      - ./purchase-service/.env
+    dns:
+      - 8.8.8.8
+    ports:
+      - "8083:8083"
+
+  wishlist:
+    build:
+      context: ./wishlist-service
+    env_file:
+      - ./wishlist-service/.env
+    dns:
+      - 8.8.8.8
+    ports:
+      - "8084:8084"
+
+  storage:
+    build:
+      context: ./storage-service
+    env_file:
+      - ./storage-service/.env
+    dns:
+      - 8.8.8.8
+    ports:
+      - "8085:8085"
+    volumes:
+      - ./storage-files:/app/files
+
+  gateway:
+    build:
+      context: ./gateway
+    env_file:
+      - ./gateway/.env
+    dns:
+      - 8.8.8.8
+    environment:
+      AUTH_SERVICE_URL: http://auth-user:8081
+      GAME_SERVICE_URL: http://game:8082
+      PURCHASE_SERVICE_URL: http://purchase:8083
+      WISHLIST_SERVICE_URL: http://wishlist:8084
+      STORAGE_SERVICE_URL: http://storage:8085
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-user
+      - game
+      - purchase
+      - wishlist
+      - storage
+
+# Usage:
+# 1. Copy each service's `.env.example` to `.env` and set the Atlas MongoDB URI.
+# 2. From `services/` run:
+#
+#    docker compose up --build
+
+# Local bind mount used for storage files during development.
+#

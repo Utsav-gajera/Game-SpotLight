@@ -31,3 +31,14 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Server local properties
+server/src/main/resources/application-local.properties
+server/src/test/resources/application-local.properties
+
+# Environment file (copy from .env.example)
+.env
+
+# Frontend dependencies and build output
+client/node_modules/
+client/dist/
