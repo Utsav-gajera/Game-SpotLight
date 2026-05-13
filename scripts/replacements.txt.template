@@ -1,0 +1,11 @@
+# replacements.txt.template — example for git-filter-repo --replace-text
+# Copy to a safe location and replace the placeholder values with the exact secret strings found in your commits.
+# Format: exact_secret==>[REDACTED-TAG]
+
+# Example entries (do NOT commit this file if you fill real secrets):
+# [REDACTED-AIVEN-KAFKA]==>[REDACTED-AIVEN-KAFKA]
+# xsmtpsib-1fda2a905dfa43928d0cef...==>[REDACTED-BREVO]
+# mongodb+srv://user:pass@host/db==>[REDACTED-MONGO]
+# [REDACTED-REDIS]==>[REDACTED-REDIS]
+# [REDACTED-JWT]==>[REDACTED-JWT]
+# [REDACTED-OPENSEARCH]==>[REDACTED-OPENSEARCH]
