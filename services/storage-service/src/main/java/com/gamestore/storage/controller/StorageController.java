@@ -2,6 +2,7 @@ package com.gamestore.storage.controller;
 
 import com.gamestore.storage.dto.FileMetadataDTO;
 import com.gamestore.storage.service.StorageService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,14 +14,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/storage")
-@CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class StorageController {
 
     private final StorageService storageService;
-
-    public StorageController(StorageService storageService) {
-        this.storageService = storageService;
-    }
 
     @PostMapping("/upload")
     public ResponseEntity<FileMetadataDTO> uploadFile(

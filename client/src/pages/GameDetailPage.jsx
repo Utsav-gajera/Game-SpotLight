@@ -2,15 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api, downloadFile } from '../lib/api';
+import { formatPrice } from '../lib/formatters';
 import PrettySelect from '../components/PrettySelect';
-
-function formatPrice(price) {
-  const value = Number(price);
-  if (!Number.isFinite(value) || value === 0) {
-    return 'Free';
-  }
-  return `$${value.toFixed(2)}`;
-}
+import DownloadProgress from '../components/DownloadProgress';
+import GameCard from '../components/GameCard';
 
 function InfoChip({ label, value }) {
   return (
@@ -98,6 +93,9 @@ export default function GameDetailPage() {
   const [reviewStatus, setReviewStatus] = useState('');
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewPage, setReviewPage] = useState(1);
+  const [downloadProgress, setDownloadProgress] = useState(-1);
+  const [similarGames, setSimilarGames] = useState([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const wishlistOptions = useMemo(
     () => wishlists.map((wishlist) => ({
@@ -170,6 +168,31 @@ export default function GameDetailPage() {
 
   useEffect(() => {
     setReviewPage(1);
+  }, [gameId]);
+
+  useEffect(() => {
+    let active = true;
+    if (!gameId) {
+      setSimilarGames([]);
+      return undefined;
+    }
+
+    api.games
+      .similar(gameId)
+      .then((data) => {
+        if (active) {
+          setSimilarGames(Array.isArray(data) ? data : []);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSimilarGames([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, [gameId]);
 
   const formattedRequirements = useMemo(() => {
@@ -302,6 +325,18 @@ export default function GameDetailPage() {
     }
   };
 
+  const handlePrevImage = () => {
+    setSelectedImageIndex((current) => 
+      current === 0 ? (game.galleryImageUrls?.length || 1) - 1 : current - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    setSelectedImageIndex((current) => 
+      current === (game.galleryImageUrls?.length || 1) - 1 ? 0 : current + 1
+    );
+  };
+
   const handleSecureDownload = async () => {
     if (!user) {
       navigate('/auth');
@@ -314,6 +349,7 @@ export default function GameDetailPage() {
     }
 
     try {
+      setDownloadProgress(0);
       setStatus('Preparing secure download link...');
       const payload = await api.user.getGameDownloadUrl(game.id);
       if (!payload?.url) {
@@ -322,9 +358,20 @@ export default function GameDetailPage() {
       const platform = (game.platform || '').toLowerCase();
       const fileExt = platform.includes('windows') || platform.includes('pc') ? '.exe' : '.apk';
       const fileName = `${game.title || 'game'}${fileExt}`;
-      await downloadFile(payload.url, fileName);
+      const expectedSizeBytes = Number(game.sizeInBytes) > 0 ? Number(game.sizeInBytes) : null;
+      
+      await downloadFile(payload.url, fileName, (progress) => {
+        setDownloadProgress(progress);
+        if (progress === 100) {
+          setTimeout(() => setDownloadProgress(-1), 1500);
+        } else if (progress < 0) {
+          setDownloadProgress(-1);
+        }
+      }, expectedSizeBytes);
+      
       setStatus(`Download started. File will be saved as ${fileName}`);
     } catch (error) {
+      setDownloadProgress(-1);
       setStatus(error.message || 'Could not start download.');
     }
   };
@@ -361,12 +408,25 @@ export default function GameDetailPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/20 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
               <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.26em] text-slate-300">
-                {game.genre ? <span>{game.genre}</span> : null}
-                {game.platform ? <span>• {game.platform}</span> : null}
-                {game.ageRating ? <span>• {game.ageRating}</span> : null}
+                {game.genre ? <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1">{game.genre}</span> : null}
+                {game.platform ? <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1">{game.platform}</span> : null}
+                {game.ageRating ? <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1">{game.ageRating}</span> : null}
               </div>
               <h1 className="mt-3 font-display text-4xl font-bold text-white sm:text-5xl">{game.title}</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">{game.description || 'A feature-rich listing with App Store polish and utility-first marketplace actions.'}</p>
+              <div className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-3">
+                <div className="metric-card px-4 py-3">
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Price</div>
+                  <div className="mt-1 text-sm font-semibold text-white">{formatPrice(game.price)}</div>
+                </div>
+                <div className="metric-card px-4 py-3">
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Downloads</div>
+                  <div className="mt-1 text-sm font-semibold text-white">{game.totalDownloads != null ? String(game.totalDownloads) : '0'}</div>
+                </div>
+                <div className="metric-card px-4 py-3">
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Status</div>
+                  <div className="mt-1 text-sm font-semibold text-white">{isOwned ? 'Owned' : 'Available'}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -375,10 +435,10 @@ export default function GameDetailPage() {
           <div className="section-shell">
             <div className="hero-badge">
               <span className="h-2 w-2 rounded-full bg-accent" />
-              Purchase
+              Actions
             </div>
             <div className="mt-2 font-display text-3xl font-bold text-white">{formatPrice(game.price)}</div>
-            <p className="mt-2 text-sm text-slate-400">{game.downloadUrl ? 'Direct download and install link included in the listing.' : 'Download link can be configured by the developer or admin.'}</p>
+            <p className="mt-2 text-sm text-slate-400">{game.downloadUrl ? 'Download is ready after purchase.' : 'Download link is not connected yet.'}</p>
             <div className="mt-5 flex flex-wrap gap-3">
               {isOwned ? (
                 <button type="button" onClick={handleSecureDownload} className="primary-button">
@@ -397,13 +457,119 @@ export default function GameDetailPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <InfoChip label="Developer" value={game.developerUsername || 'Unknown'} />
+            <InfoChip label="Developer" value={game.developer || game.developerUsername || 'Unknown'} />
             <InfoChip label="Version" value={game.version || 'N/A'} />
             <InfoChip label="Release date" value={game.releaseDate || 'TBA'} />
             <InfoChip label="Size" value={game.sizeInBytes ? `${Math.round(Number(game.sizeInBytes) / 1024 / 1024)} MB` : 'N/A'} />
+            <InfoChip label="Downloads" value={game.totalDownloads != null ? String(game.totalDownloads) : '0'} />
           </div>
         </div>
       </section>
+
+      <section className="section-shell">
+        <div className="text-xs uppercase tracking-[0.28em] text-accent">Description</div>
+        <p className="mt-4 text-base leading-7 text-slate-300">{game.description || 'Open for purchase, wishlist, download, reviews, and similar games.'}</p>
+      </section>
+
+      {Array.isArray(game.galleryImageUrls) && game.galleryImageUrls.length ? (
+        <section className="section-shell">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.28em] text-accent">Gallery</div>
+              <h2 className="mt-2 font-display text-2xl font-bold text-white">Captured scenes</h2>
+            </div>
+            <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Image {selectedImageIndex + 1} of {game.galleryImageUrls.length}</div>
+          </div>
+
+          <div className="mt-5 rounded-3xl border border-white/10 bg-black/20 p-4 sm:p-6">
+            <div className="relative flex items-center gap-4">
+              <button
+                type="button"
+                onClick={handlePrevImage}
+                className="flex-shrink-0 rounded-full border border-white/20 bg-black/40 p-3 text-white hover:bg-black/60 hover:border-accent transition-all"
+                aria-label="Previous image"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              <div className="flex-grow overflow-hidden rounded-2xl">
+                <img
+                  src={game.galleryImageUrls[selectedImageIndex]}
+                  alt={`${game.title} screenshot ${selectedImageIndex + 1}`}
+                  className="h-auto w-full object-cover aspect-[16/9]"
+                  onError={(e) => {
+                    if (e.target.src !== FALLBACK_GALLERY_IMAGE) {
+                      e.target.src = FALLBACK_GALLERY_IMAGE;
+                    }
+                  }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextImage}
+                className="flex-shrink-0 rounded-full border border-white/20 bg-black/40 p-3 text-white hover:bg-black/60 hover:border-accent transition-all"
+                aria-label="Next image"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-4">
+              <div className="text-sm text-slate-300">
+                {game.galleryImageUrls[selectedImageIndex] ? 'Screenshot' : 'N/A'}
+              </div>
+              <div className="flex gap-2">
+                {game.galleryImageUrls.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`h-2 rounded-full transition-all ${
+                      index === selectedImageIndex
+                        ? 'w-8 bg-accent'
+                        : 'w-2 bg-white/20 hover:bg-white/40'
+                    }`}
+                    aria-label={`View image ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 overflow-x-auto pb-2">
+            <div className="grid grid-flow-col auto-cols-[84%] gap-4 sm:auto-cols-[68%] lg:auto-cols-[48%] xl:auto-cols-[36%]">
+              {game.galleryImageUrls.map((imageUrl, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => setSelectedImageIndex(index)}
+                  className={`snap-start overflow-hidden rounded-3xl transition-all ${
+                    index === selectedImageIndex
+                      ? 'border-2 border-accent shadow-[0_18px_70px_rgba(0,0,0,0.28)]'
+                      : 'border border-white/10 bg-black/20 shadow-[0_18px_70px_rgba(0,0,0,0.28)] hover:border-white/30'
+                  }`}
+                >
+                  <div className="relative aspect-[16/10]">
+                    <GalleryImage src={imageUrl} alt={`${game.title} screenshot ${index + 1}`} />
+                    <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/45 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-white backdrop-blur-md">
+                      Shot {index + 1}
+                    </div>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/80 to-transparent px-4 pb-4 pt-8">
+                      <div className="text-sm font-semibold text-white">{game.title}</div>
+                      <div className="text-xs uppercase tracking-[0.22em] text-slate-300">Click to view</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
         <div className="section-shell">
@@ -424,12 +590,34 @@ export default function GameDetailPage() {
                 </li>
               ))}
             </ul>
+
+            <section className="section-shell">
+              <div className="hero-badge">
+                <span className="h-2 w-2 rounded-full bg-accent2" />
+                Similar games
+              </div>
+              <h2 className="mt-2 font-display text-2xl font-bold text-white">Similar games</h2>
+              <p className="mt-2 text-sm text-slate-400">OpenSearch uses the listing content to surface close matches.</p>
+              <div className="mt-5">
+                {similarGames.length ? (
+                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {similarGames.slice(0, 6).map((similarGame) => (
+                      <div key={similarGame.id} className="reveal-up">
+                        <GameCard game={similarGame} compact />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">No recommendations available yet. Add OPENSEARCH_ENABLED=true to enable AI search.</div>
+                )}
+              </div>
+            </section>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="section-shell">
-            <div className="text-xs uppercase tracking-[0.28em] text-slate-400">Downloads and assets</div>
+            <div className="text-xs uppercase tracking-[0.28em] text-slate-400">Quick access</div>
             <div className="mt-3 space-y-3 text-sm text-slate-300">
               {isOwned ? (
                 <div>
@@ -583,24 +771,7 @@ export default function GameDetailPage() {
         ) : null}
       </section>
 
-      {Array.isArray(game.galleryImageUrls) && game.galleryImageUrls.length ? (
-        <section className="section-shell">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.28em] text-accent">Gallery</div>
-              <h2 className="mt-2 font-display text-2xl font-bold text-white">Captured scenes</h2>
-            </div>
-            <div className="text-xs uppercase tracking-[0.24em] text-slate-400">{game.galleryImageUrls.length} images</div>
-          </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {game.galleryImageUrls.map((imageUrl, index) => (
-              <div key={index} className="overflow-hidden rounded-3xl border border-white/10 bg-black/20">
-                <GalleryImage src={imageUrl} alt={`${game.title} screenshot ${index + 1}`} />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <DownloadProgress progress={downloadProgress} isVisible={downloadProgress >= 0} />
     </div>
   );
 }

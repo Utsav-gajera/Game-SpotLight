@@ -28,4 +28,9 @@ public class GameDTO {
     private String ageRating;
     private String systemRequirements;
     private String releaseDate;
+    private String abbreviation;  // e.g., "rc" for "Rocket Car", "bs" for "Brawl Stars"
+    
+    // Stats fields for eventual consistency
+    private Long totalPurchases;
+    private Long totalDownloads;
 }

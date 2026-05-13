@@ -1,8 +1,9 @@
 package com.gamestore.purchase.controller;
 
 import com.gamestore.purchase.dto.PurchaseDTO;
-import com.gamestore.purchase.security.JwtService;
+import com.gamestore.purchase.security.AuthUtils;
 import com.gamestore.purchase.service.PurchaseService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,20 +13,16 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/purchases")
+@RequiredArgsConstructor
 public class PurchaseController {
 
     private final PurchaseService purchaseService;
-    private final JwtService jwtService;
-
-    public PurchaseController(PurchaseService purchaseService, JwtService jwtService) {
-        this.purchaseService = purchaseService;
-        this.jwtService = jwtService;
-    }
+    private final AuthUtils authUtils;
 
     @GetMapping("/user/me")
     public ResponseEntity<List<PurchaseDTO>> getCurrentUserPurchases(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        String userId = extractUsernameFromHeader(authorizationHeader);
+        String userId = authUtils.extractUsernameFromHeader(authorizationHeader);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -46,15 +43,24 @@ public class PurchaseController {
     @PostMapping
     public ResponseEntity<?> createPurchase(
             @RequestBody PurchaseDTO purchaseDTO,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        String userId = extractUsernameFromHeader(authorizationHeader);
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        String userId = authUtils.extractUsernameFromHeader(authorizationHeader);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         purchaseDTO.setUserId(userId);
         try {
-            PurchaseDTO created = purchaseService.createPurchase(purchaseDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+            if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                PurchaseService.IdempotencyResult result = purchaseService.createPurchaseWithIdempotency(purchaseDTO, idempotencyKey);
+                if (result.isReplayed()) {
+                    return ResponseEntity.ok(result.getPurchase());
+                }
+                return ResponseEntity.status(HttpStatus.CREATED).body(result.getPurchase());
+            } else {
+                PurchaseDTO created = purchaseService.createPurchase(purchaseDTO);
+                return ResponseEntity.status(HttpStatus.CREATED).body(created);
+            }
         } catch (IllegalStateException ex) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("message", ex.getMessage()));
@@ -73,18 +79,4 @@ public class PurchaseController {
         return ResponseEntity.noContent().build();
     }
 
-    private String extractUsernameFromHeader(String authorizationHeader) {
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            return null;
-        }
-        String token = authorizationHeader.substring("Bearer ".length()).trim();
-        if (token.isEmpty()) {
-            return null;
-        }
-        try {
-            return jwtService.parseUsername(token).orElse(null);
-        } catch (RuntimeException ex) {
-            return null;
-        }
-    }
 }

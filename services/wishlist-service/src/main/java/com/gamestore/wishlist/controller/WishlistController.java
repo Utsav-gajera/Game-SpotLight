@@ -2,19 +2,17 @@ package com.gamestore.wishlist.controller;
 
 import com.gamestore.wishlist.dto.WishlistDTO;
 import com.gamestore.wishlist.service.WishlistService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/wishlist")
+@RequiredArgsConstructor
 public class WishlistController {
 
     private final WishlistService wishlistService;
-
-    public WishlistController(WishlistService wishlistService) {
-        this.wishlistService = wishlistService;
-    }
 
     @GetMapping("/{userId}")
     public ResponseEntity<WishlistDTO> getWishlist(@PathVariable String userId) {

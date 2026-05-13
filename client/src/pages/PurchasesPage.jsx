@@ -288,7 +288,7 @@ export default function PurchasesPage() {
           <div className="relative">
             <div className="hero-badge">
               <span className="h-2 w-2 rounded-full bg-sky-300" />
-              Library overview
+              Library
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <h1 className="font-display text-3xl font-bold text-white sm:text-4xl">Purchase history</h1>
@@ -297,7 +297,7 @@ export default function PurchasesPage() {
               </span>
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Review what you bought, revisit a game page, and re-download from a cleaner, faster library screen.
+              Review what you own, reopen game pages, and re-download from one clean list.
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
@@ -316,7 +316,7 @@ export default function PurchasesPage() {
             </div>
 
             <div className="mt-5 rounded-3xl border border-white/10 bg-black/20 p-4 text-sm text-slate-300 shadow-[0_20px_80px_rgba(0,0,0,0.25)]">
-              Every owned game shows file metadata, a safe re-download action, and a visible removed-game state when the source record is gone.
+              Each row shows the game, the date, and a safe re-download action.
             </div>
             <div className="mt-4 text-sm text-slate-400">{notice}</div>
           </div>
@@ -325,7 +325,7 @@ export default function PurchasesPage() {
       </aside>
 
       <main className="space-y-6">
-        <Section title="Your library" subtitle="A clean, re-download friendly list of everything you own.">
+        <Section title="Your library" subtitle="Everything you own, ready for quick search or download.">
           <div className="grid gap-4 md:grid-cols-3">
             <StatCard label="Purchases" value={purchaseCount} helper="Games currently in your account history." />
             <StatCard label="Ready to download" value={purchaseCount ? 'Yes' : 'No'} helper="Use the download button on any owned game." />
@@ -337,7 +337,7 @@ export default function PurchasesPage() {
             <input
               value={purchaseQuery}
               onChange={(event) => setPurchaseQuery(event.target.value)}
-              placeholder="Search by game name or date"
+              placeholder="Search by game, user, or date"
               className="input-field min-w-0 flex-1 border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-500"
             />
             <div className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.22em] text-slate-300">

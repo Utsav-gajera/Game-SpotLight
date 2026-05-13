@@ -33,6 +33,11 @@ public class Game {
     private String ageRating;
     private String systemRequirements;
     private String releaseDate;
+    private String abbreviation;  // e.g., "rc" for "Rocket Car", "bs" for "Brawl Stars"
     @CreatedDate
     private Instant createdAt;
+    
+    // Stats fields for eventual consistency
+    private Long totalPurchases = 0L;
+    private Long totalDownloads = 0L;
 }

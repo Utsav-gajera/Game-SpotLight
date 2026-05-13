@@ -3,7 +3,7 @@
 Spring Cloud Gateway that routes requests to microservices.
 
 Routes (local compose service names):
-- `/api/auth/**` -> auth-user (8081)
+- `/api/auth/**` -> auth-user (8087)
 - `/api/games/**` -> game (8082)
 - `/api/purchases/**` -> purchase (8083)
 - `/api/wishlist/**` -> wishlist (8084)

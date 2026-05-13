@@ -35,13 +35,10 @@ const emptyGameForm = {
   version: '',
   platform: '',
   ageRating: '',
-  imageUrl: '',
-  gameFileUrl: '',
-  galleryImageUrls: [],
   systemRequirements: '',
   releaseDate: '',
   price: '',
-  developerUsername: ''
+  developer: ''
 };
 
 function Section({ title, subtitle, children, action, toneClassName = '' }) {
@@ -226,7 +223,7 @@ export default function WorkspacePage() {
     }
 
     return games.filter((game) => {
-      const haystack = [game.title, game.genre, game.platform, game.developerUsername]
+      const haystack = [game.title, game.genre, game.platform, game.developer]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -295,9 +292,15 @@ export default function WorkspacePage() {
   };
 
   const loadDeveloperData = async () => {
-    const [gamesResponse, profileData] = await Promise.all([api.developer.games(), api.developer.profile()]);
+    const profileData = await api.developer.profile();
+    const developerUsername = profileData?.username || user?.username || profileName || '';
+    const gamesResponse = developerUsername ? await api.developer.games(developerUsername) : [];
     setMyGames(Array.isArray(gamesResponse) ? gamesResponse : []);
     setProfileName(profileData?.username || user?.username || '');
+    setGameForm((current) => ({
+      ...current,
+      developer: current.developer || developerUsername
+    }));
   };
 
   const loadAdminData = async () => {
@@ -350,6 +353,38 @@ export default function WorkspacePage() {
       active = false;
     };
   }, [isNormalUser, isDeveloper, isAdmin]);
+
+  // Load selected game into form
+  useEffect(() => {
+    if (!selectedGameId) {
+      resetGameForm();
+      return;
+    }
+
+    const selectedGame = games.find((game) => String(game.id) === String(selectedGameId));
+    if (selectedGame) {
+      setGameForm({
+        title: selectedGame.title || '',
+        genre: selectedGame.genre || '',
+        description: selectedGame.description || '',
+        version: selectedGame.version || '',
+        platform: selectedGame.platform || '',
+        ageRating: selectedGame.ageRating || '',
+        systemRequirements: selectedGame.systemRequirements || '',
+        releaseDate: selectedGame.releaseDate || '',
+        price: selectedGame.price || '',
+        developer: selectedGame.developer || selectedGame.developerUsername || ''
+      });
+      // Show current assets as read-only info (not in gameForm)
+      setLogoFileName(selectedGame.imageUrl ? 'Current cover image set' : 'No cover image');
+      setGameFileName(selectedGame.gameFileUrl ? 'Current game file set' : 'No game file');
+      setGalleryFileNames(selectedGame.galleryImageUrls?.length ? [`${selectedGame.galleryImageUrls.length} gallery images`] : []);
+      // Clear file inputs so old files aren't re-uploaded
+      setCoverImageFile(null);
+      setBinaryGameFile(null);
+      setGalleryFiles([]);
+    }
+  }, [selectedGameId, games]);
 
   const updateForm = (setter) => (event) => {
     const { name, value } = event.target;
@@ -532,7 +567,7 @@ export default function WorkspacePage() {
           gameFileUrl,
           galleryImageUrls,
           sizeInBytes: binaryGameFile.size,
-          developerUsername: user?.username || profileName || payload.developerUsername || ''
+          developer: user?.username || profileName || payload.developer || ''
         });
         await loadDeveloperData();
       }
@@ -556,12 +591,10 @@ export default function WorkspacePage() {
         await api.admin.updateGame(gameId, payload);
         await loadAdminData();
       } else {
-        if (!coverImageFile && !binaryGameFile && galleryFiles.length === 0) {
-          setNotice('Add at least one file to update the game, or use the admin form for metadata-only edits.');
-          return;
-        }
-
+        // Allow metadata-only updates or updates with new files
         const updates = { ...payload };
+        
+        // Upload new files if provided
         if (coverImageFile) {
           updates.imageUrl = await uploadAsset(coverImageFile);
         }
@@ -572,12 +605,14 @@ export default function WorkspacePage() {
         if (galleryFiles.length > 0) {
           updates.galleryImageUrls = await Promise.all(galleryFiles.map((file) => uploadAsset(file)));
         }
-        updates.developerUsername = user?.username || profileName || payload.developerUsername || '';
+        
+        updates.developer = user?.username || profileName || payload.developer || '';
 
         await api.developer.updateGame(gameId, updates);
         await loadDeveloperData();
       }
-      setNotice('Game updated.');
+      setNotice('Game updated successfully!');
+      resetGameForm();
     } catch (error) {
       setNotice(error.message || 'Could not update game.');
     } finally {
@@ -630,8 +665,8 @@ export default function WorkspacePage() {
     systemRequirements: gameForm.systemRequirements,
     releaseDate: gameForm.releaseDate || null,
     price: gameForm.price === '' ? null : Number(gameForm.price),
-    developerUsername: user?.username || ''
-  }), [gameForm, user?.username]);
+    developer: gameForm.developer || user?.username || profileName || ''
+  }), [gameForm, user?.username, profileName]);
 
   return (
     <div className="space-y-6">
@@ -639,7 +674,7 @@ export default function WorkspacePage() {
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-display text-3xl font-bold text-white">Workspace</h1>
           <RoleBadge role={user?.role || 'GUEST'} />
-          <div className="text-xs text-slate-500">isDeveloper: {isDeveloper ? 'yes' : 'no'} | isAdmin: {isAdmin ? 'yes' : 'no'} | isNormalUser: {isNormalUser ? 'yes' : 'no'}</div>
+          <div className="text-xs text-slate-500">Your account tools and shortcuts live here.</div>
         </div>
         {isNormalUser ? (
           <div className="mt-4 flex flex-wrap gap-3">
@@ -659,7 +694,7 @@ export default function WorkspacePage() {
 
       {isNormalUser ? (
         <div className="grid gap-6 xl:grid-cols-2">
-          <Section title="Your library" subtitle="" toneClassName="border-emerald-400/10 bg-emerald-400/5">
+          <Section title="Your library" subtitle="Profile, wishlist, and purchases are grouped together." toneClassName="border-emerald-400/10 bg-emerald-400/5">
             <div className="grid gap-4 md:grid-cols-3">
               <StatCard label="Wishlists" value={userSummary.wishlistCount} helper="" />
               <StatCard label="Purchases" value={userSummary.purchaseCount} helper="" />
@@ -767,7 +802,7 @@ export default function WorkspacePage() {
             </div>
           </Section>
 
-          <Section title="Purchase history" subtitle="" toneClassName="border-sky-400/10 bg-sky-400/5">
+          <Section title="Purchase history" subtitle="Review downloads and reopen games from the same place." toneClassName="border-sky-400/10 bg-sky-400/5">
             <div className="mb-4 grid gap-4 md:grid-cols-2">
               <StatCard label="Recent purchases" value={userSummary.purchaseCount} helper="" />
               <StatCard label="Wishlist" value={userSummary.selectedWishlistName} helper="" />
@@ -811,12 +846,13 @@ export default function WorkspacePage() {
 
       {isDeveloper ? (
         <div className="grid gap-6 xl:grid-cols-2">
-          <Section title="Developer studio" subtitle="Publish and manage your own games." action={<MiniButton onClick={() => loadDeveloperData()}>Refresh</MiniButton>}>
+          <Section title="Developer studio" subtitle="Manage the games you publish." action={<MiniButton onClick={() => loadDeveloperData()}>Refresh</MiniButton>}>
             <div className="grid gap-4 md:grid-cols-2">
               {myGames.map((game) => (
                 <div key={game.id} className="rounded-3xl border border-white/10 bg-white/5 p-4">
                   <div className="font-semibold text-white">{game.title}</div>
                   <div className="mt-1 text-sm text-slate-400">{game.genre} • {game.platform}</div>
+                  <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">Developed by {game.developer || 'Unknown'}</div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <MiniButton onClick={() => setSelectedGameId(game.id)}>Select</MiniButton>
                     <MiniButton onClick={() => deleteGame(game.id)}>Delete</MiniButton>
@@ -826,11 +862,11 @@ export default function WorkspacePage() {
             </div>
           </Section>
 
-          <Section title="Create / update game" subtitle="Fill in game details and upload your files.">
+          <Section title="Create / update game" subtitle="Edit details, upload assets, and publish.">
             <div className="grid gap-4 lg:grid-cols-2">
               {Object.entries(gameForm).map(([key, value]) => {
                 // Skip auto-managed and file-related fields
-                if (key === 'imageUrl' || key === 'gameFileUrl' || key === 'galleryImageUrls' || key === 'sizeInBytes' || key === 'developerUsername') {
+                if (key === 'imageUrl' || key === 'gameFileUrl' || key === 'galleryImageUrls' || key === 'sizeInBytes') {
                   return null;
                 }
                 // Textarea for longer text
@@ -860,11 +896,26 @@ export default function WorkspacePage() {
                 // Regular text inputs
                 const labels = {
                   title: 'Game Title',
+                  developer: 'Developed By',
                   genre: 'Genre',
                   version: 'Version',
                   platform: 'Platform (Windows/macOS/Linux)',
                   ageRating: 'Age Rating (e.g., PEGI 12)'
                 };
+                if (key === 'developer') {
+                  return (
+                    <Field key={key} label={labels[key] || key}>
+                      <input
+                        name={key}
+                        value={value || user?.username || profileName || ''}
+                        onChange={updateForm(setGameForm)}
+                        className="input-field"
+                        type="text"
+                        readOnly
+                      />
+                    </Field>
+                  );
+                }
                 // Render a select for genre to keep options consistent
                 if (key === 'genre') {
                   return (

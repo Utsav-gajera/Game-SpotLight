@@ -1,5 +1,6 @@
 package com.gamestore.authuser.security;
 
+import com.gamestore.authuser.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,9 +17,11 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
         this.jwtService = jwtService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -35,6 +38,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             try {
                 jwtService.parseUsername(token).ifPresent(username -> {
+                    // CRITICAL: Verify user still exists in database
+                    // This prevents deleted users from using stale JWTs
+                    if (userRepository.findByUsernameIgnoreCase(username).isEmpty()) {
+                        // User does not exist - reject authentication
+                        SecurityContextHolder.clearContext();
+                        return;
+                    }
+                    
                     List<SimpleGrantedAuthority> authorities = jwtService.parseRoles(token).stream()
                             .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                             .toList();

@@ -1,5 +1,5 @@
 const API_ROOT = '/api';
-const AUTH_API_ROOT = import.meta.env.VITE_AUTH_API_ROOT || 'http://localhost:8081/api';
+const AUTH_API_ROOT = import.meta.env.VITE_AUTH_API_ROOT || 'http://localhost:8087/api';
 const GAME_API_ROOT = import.meta.env.VITE_GAME_API_ROOT || 'http://localhost:8082/api';
 const STORAGE_API_ROOT = import.meta.env.VITE_STORAGE_API_ROOT || 'http://localhost:8085/api';
 const PURCHASE_API_ROOT = import.meta.env.VITE_PURCHASE_API_ROOT || 'http://localhost:8083/api';
@@ -107,32 +107,81 @@ export async function request(path, options = {}) {
   return payload;
 }
 
-export async function downloadFile(url, fileName) {
-  try {
-    // Backend always returns proxy URLs (starting with /api) for downloads
-    // Client can fetch directly; no need to parse fileId from Supabase URLs
-    const response = await fetch(url, { credentials: 'include' });
-    if (!response.ok) {
-      throw new Error(`Download failed (${response.status})`);
-    }
-
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-
+export function downloadFile(url, fileName, onProgress = null, expectedSizeBytes = null) {
+  return new Promise((resolve, reject) => {
     try {
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = fileName || '';
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } finally {
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      if (onProgress) {
+        onProgress(0);
+      }
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.withCredentials = true;
+      xhr.responseType = 'blob';
+
+      xhr.onprogress = (event) => {
+        if (!onProgress) {
+          return;
+        }
+
+        // Prefer actual transfer total from network, fall back to known game file size.
+        const total = event.lengthComputable && event.total > 0
+          ? event.total
+          : Number(expectedSizeBytes) > 0
+            ? Number(expectedSizeBytes)
+            : null;
+
+        if (total) {
+          const progress = Math.min(99, Math.round((event.loaded / total) * 100));
+          onProgress(progress);
+          return;
+        }
+
+        // Unknown total size: keep progress moving based on bytes received.
+        const pseudoProgress = Math.min(95, Math.max(1, Math.floor(Math.log10(event.loaded + 1) * 14)));
+        onProgress(pseudoProgress);
+      };
+
+      xhr.onload = () => {
+        if (xhr.status < 200 || xhr.status >= 300 || !xhr.response) {
+          reject(new Error(`Download failed (${xhr.status})`));
+          return;
+        }
+
+        const objectUrl = URL.createObjectURL(xhr.response);
+        try {
+          const link = document.createElement('a');
+          link.href = objectUrl;
+          link.download = fileName || '';
+          link.rel = 'noopener';
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+
+          if (onProgress) {
+            onProgress(100);
+          }
+          resolve();
+        } finally {
+          setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network error while downloading file.'));
+      };
+
+      xhr.send();
+    } catch (error) {
+      reject(error);
     }
-  } catch {
+  }).catch((error) => {
+    if (onProgress) {
+      onProgress(-1);
+    }
     window.open(url, '_blank', 'noopener,noreferrer');
-  }
+    throw error;
+  });
 }
 
 async function requestWithRoot(root, path, options = {}) {
@@ -172,21 +221,68 @@ export const api = {
   auth: {
     register: (payload) => requestWithRoot(AUTH_API_ROOT, '/auth/register', { method: 'POST', body: payload }),
     login: (payload) => requestWithRoot(AUTH_API_ROOT, '/auth/login', { method: 'POST', body: payload }),
+    becomeDeveloper: () => requestWithRoot(AUTH_API_ROOT, '/auth/developer', { method: 'POST' }),
     logout: () => requestWithRoot(AUTH_API_ROOT, '/auth/logout', { method: 'POST' }),
-    session: () => requestWithRoot(AUTH_API_ROOT, '/auth/session')
+    session: () => requestWithRoot(AUTH_API_ROOT, '/auth/session'),
+    supabaseExchange: (accessToken) => requestWithRoot(AUTH_API_ROOT, '/auth/oauth', {
+      method: 'POST',
+      body: { accessToken }
+    })
   },
   games: {
     all: async () => normalizeGames(await requestWithRoot(GAME_API_ROOT, '/games')),
+    allPaginated: async (page = 1) => {
+      const response = await requestWithRoot(GAME_API_ROOT, `/games/paginated?page=${page}`);
+      return {
+        ...response,
+        content: normalizeGames(response.content || [])
+      };
+    },
     byId: async (gameId) => normalizeGame(await requestWithRoot(GAME_API_ROOT, `/games/${gameId}`)),
     addReview: async (gameId, payload) => normalizeGame(await requestWithRoot(GAME_API_ROOT, `/games/${gameId}/reviews`, { method: 'POST', body: payload })),
     deleteReview: async (gameId) => normalizeGame(await requestWithRoot(GAME_API_ROOT, `/games/${gameId}/reviews`, { method: 'DELETE' })),
     search: async (title) => normalizeGames(await requestWithRoot(GAME_API_ROOT, `/games/search?title=${encodeURIComponent(title)}`)),
+    semanticSearch: async (query) => normalizeGames(await requestWithRoot(GAME_API_ROOT, `/games/semantic-search?query=${encodeURIComponent(query)}`)),
+    suggestions: async (query, limit = 8) => requestWithRoot(GAME_API_ROOT, `/games/suggestions?query=${encodeURIComponent(query)}&limit=${limit}`),
+    similar: async (gameId) => normalizeGames(await requestWithRoot(GAME_API_ROOT, `/games/${gameId}/similar`)),
+    searchPaginated: async (title, page = 1) => {
+      const response = await requestWithRoot(GAME_API_ROOT, `/games/search/paginated?title=${encodeURIComponent(title)}&page=${page}`);
+      return {
+        ...response,
+        content: normalizeGames(response.content || [])
+      };
+    },
+    semanticSearchPaginated: async (query, page = 1) => {
+      const response = await requestWithRoot(GAME_API_ROOT, `/games/semantic-search/paginated?query=${encodeURIComponent(query)}&page=${page}`);
+      return {
+        ...response,
+        content: normalizeGames(response.content || [])
+      };
+    },
     genre: async (genre) => normalizeGames(await requestWithRoot(GAME_API_ROOT, `/games/genre/${encodeURIComponent(genre)}`)),
+    genrePaginated: async (genre, page = 1) => {
+      const response = await requestWithRoot(GAME_API_ROOT, `/games/genre/${encodeURIComponent(genre)}/paginated?page=${page}`);
+      return {
+        ...response,
+        content: normalizeGames(response.content || [])
+      };
+    },
     price: (min, max) => {
       const params = new URLSearchParams();
       if (min !== undefined && min !== null && min !== '') params.set('min', min);
       if (max !== undefined && max !== null && max !== '') params.set('max', max);
       return requestWithRoot(GAME_API_ROOT, `/games/price?${params.toString()}`).then(normalizeGames);
+    },
+    pricePaginated: async (min, max, page = 1) => {
+      const params = new URLSearchParams();
+      if (min !== undefined && min !== null && min !== '') params.set('min', min);
+      if (max !== undefined && max !== null && max !== '') params.set('max', max);
+      params.set('page', page);
+      const response = await requestWithRoot(GAME_API_ROOT, `/games/price/paginated?${params.toString()}`);
+      return {
+        ...response,
+        content: normalizeGames(response.content || [])
+      };
     },
     filter: ({ title, genre, minPrice, maxPrice }) => {
       const params = new URLSearchParams();
@@ -195,6 +291,19 @@ export const api = {
       if (minPrice !== undefined && minPrice !== null && minPrice !== '') params.set('minPrice', minPrice);
       if (maxPrice !== undefined && maxPrice !== null && maxPrice !== '') params.set('maxPrice', maxPrice);
       return requestWithRoot(GAME_API_ROOT, `/games/filter?${params.toString()}`).then(normalizeGames);
+    },
+    filterPaginated: async ({ title, genre, minPrice, maxPrice, page = 1 }) => {
+      const params = new URLSearchParams();
+      if (title) params.set('title', title);
+      if (genre) params.set('genre', genre);
+      if (minPrice !== undefined && minPrice !== null && minPrice !== '') params.set('minPrice', minPrice);
+      if (maxPrice !== undefined && maxPrice !== null && maxPrice !== '') params.set('maxPrice', maxPrice);
+      params.set('page', page);
+      const response = await requestWithRoot(GAME_API_ROOT, `/games/filter/paginated?${params.toString()}`);
+      return {
+        ...response,
+        content: normalizeGames(response.content || [])
+      };
     }
   },
   user: {
@@ -202,7 +311,15 @@ export const api = {
     updateProfile: (username) => requestWithRoot(AUTH_API_ROOT, '/user/profile', { method: 'PUT', body: new URLSearchParams({ username }).toString(), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }),
     changePassword: (payload) => requestWithRoot(AUTH_API_ROOT, '/user/password', { method: 'POST', body: payload }),
     purchases: () => requestWithRoot(PURCHASE_API_ROOT, '/purchases/user/me'),
-    purchaseGame: (gameId) => requestWithRoot(PURCHASE_API_ROOT, '/purchases', { method: 'POST', body: { gameId } }),
+    purchaseGame: (gameId) => requestWithRoot(PURCHASE_API_ROOT, '/purchases', {
+      method: 'POST',
+      body: { gameId },
+      headers: {
+        'Idempotency-Key': (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      }
+    }),
     getGameDownloadUrl: async (gameId) => {
       const payload = await requestWithRoot(GAME_API_ROOT, `/games/${gameId}/download-url`);
       if (payload && typeof payload === 'object' && payload.url) {
@@ -210,17 +327,17 @@ export const api = {
       }
       return payload;
     },
-    wishlistList: () => request('/user/wishlist'),
-    wishlistCreate: (name) => request(`/user/wishlist/create?name=${encodeURIComponent(name)}`, { method: 'POST' }),
-    wishlistById: (wishlistId) => request(`/user/wishlist/${wishlistId}`),
-    wishlistDelete: (wishlistId) => request(`/user/wishlist/${wishlistId}`, { method: 'DELETE' }),
-    wishlistAdd: (wishlistId, gameId) => request(`/user/wishlist/${wishlistId}/add/${gameId}`, { method: 'POST' }),
-    wishlistRemove: (wishlistId, gameId) => request(`/user/wishlist/${wishlistId}/remove/${gameId}`, { method: 'DELETE' }),
-    wishlistUpdate: (wishlistId, oldGameId, newGameId) => request(`/user/wishlist/${wishlistId}/update/${oldGameId}/${newGameId}`, { method: 'PUT' })
+    wishlistList: () => requestWithRoot(WISHLIST_API_ROOT, '/user/wishlist'),
+    wishlistCreate: (name) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/create?name=${encodeURIComponent(name)}`, { method: 'POST' }),
+    wishlistById: (wishlistId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}`),
+    wishlistDelete: (wishlistId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}`, { method: 'DELETE' }),
+    wishlistAdd: (wishlistId, gameId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}/add/${gameId}`, { method: 'POST' }),
+    wishlistRemove: (wishlistId, gameId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}/remove/${gameId}`, { method: 'DELETE' }),
+    wishlistUpdate: (wishlistId, oldGameId, newGameId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}/update/${oldGameId}/${newGameId}`, { method: 'PUT' })
   },
   developer: {
     profile: () => requestWithRoot(AUTH_API_ROOT, '/auth/session'),
-    games: async () => normalizeGames(await requestWithRoot(GAME_API_ROOT, '/games')),
+    games: async (developerUsername) => normalizeGames(await requestWithRoot(GAME_API_ROOT, `/games/developer/${encodeURIComponent(developerUsername || '')}`)),
     createGame: (payload) => requestWithRoot(GAME_API_ROOT, '/games', { method: 'POST', body: payload }),
     updateGame: (gameId, payload) => requestWithRoot(GAME_API_ROOT, `/games/${gameId}`, { method: 'PUT', body: payload }),
     deleteGame: (gameId) => requestWithRoot(GAME_API_ROOT, `/games/${gameId}`, { method: 'DELETE' })

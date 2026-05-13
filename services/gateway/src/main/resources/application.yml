@@ -6,7 +6,7 @@ spring:
     gateway:
       routes:
         - id: auth
-          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          uri: ${AUTH_SERVICE_URL:http://localhost:8087}
           predicates:
             - Path=/api/auth/**,/api/users/**
 

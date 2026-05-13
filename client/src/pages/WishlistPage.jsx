@@ -197,13 +197,13 @@ export default function WishlistPage() {
         <div className="relative grid gap-6 p-6 sm:p-8 xl:grid-cols-[1.2fr_0.8fr] xl:items-start">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="font-display text-3xl font-bold text-white sm:text-4xl">Wishlist studio</h1>
+              <h1 className="font-display text-3xl font-bold text-white sm:text-4xl">Wishlist</h1>
               <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-emerald-200">
                 {selectedWishlist?.name || 'No wishlist selected'}
               </span>
             </div>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-              Use this page to create a list, choose the list you want, and save games into it. The workflow is written as a simple 3-step path so the actions stay obvious.
+              Create lists, pick a destination, and save games without digging through menus.
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -230,24 +230,24 @@ export default function WishlistPage() {
             <StepCard
               step="1"
               title="Create a wishlist"
-              text="Type a name like Favorites, Backlog, or Multiplayer Picks. That gives you a place to store games."
+              text="Name the list in one line."
             />
             <StepCard
               step="2"
               title="Select the target list"
-              text="Pick the wishlist you want to work on. The highlighted card and the select box both show the active list."
+              text="Choose the active list from the selector or the cards below."
             />
             <StepCard
               step="3"
               title="Add a game"
-              text="Choose a game and save it into the active wishlist. You can review or delete lists below at any time."
+              text="Save any game into the selected wishlist."
             />
           </div>
         </div>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <Section title="Step 1: Create a wishlist" subtitle="Name the collection first so the purpose is obvious when you return later.">
+        <Section title="Create a wishlist" subtitle="Give the list a clear name and start saving games right away.">
           <div className="grid gap-4">
             <Field label="Wishlist name">
               <input
@@ -263,7 +263,7 @@ export default function WishlistPage() {
           </div>
         </Section>
 
-        <Section title="Step 2 and 3: Choose a list, then add a game" subtitle="Pick where the game should go, then save the selected game into that list.">
+        <Section title="Add a game" subtitle="Select the list, then choose the game you want to save.">
           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
             <Field label="Active wishlist">
               <PrettySelect
@@ -295,7 +295,7 @@ export default function WishlistPage() {
         </Section>
       </div>
 
-      <Section title="Your wishlists" subtitle="Each card shows the list name, how many games are inside, and a quick preview of what is saved.">
+      <Section title="Your wishlists" subtitle="Cards show the list name and a short preview of what is inside.">
         <div className="space-y-3">
           {wishlists.map((wishlist) => {
             const wishlistId = wishlist.id || wishlist.wishlistId || wishlist.name;

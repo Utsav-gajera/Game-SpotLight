@@ -2,14 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import GameCard from '../components/GameCard';
 import { api } from '../lib/api';
-
-function formatPrice(price) {
-  const value = Number(price);
-  if (!Number.isFinite(value) || value === 0) {
-    return 'Free';
-  }
-  return `$${value.toFixed(2)}`;
-}
+import { formatPrice } from '../lib/formatters';
+import { prefetchRoute } from '../lib/routePrefetch';
 
 function HeroStat({ label, value }) {
   return (
@@ -17,6 +11,33 @@ function HeroStat({ label, value }) {
       <div className="text-xs uppercase tracking-[0.28em] text-slate-400">{label}</div>
       <div className="mt-2 font-display text-2xl font-bold text-white">{value}</div>
     </div>
+  );
+}
+
+function FeatureCard({ to, title, value, icon, tone = 'accent' }) {
+  const toneClass = tone === 'accent2' ? 'from-accent2/30 to-accent2/5 border-accent2/20' : tone === 'warm' ? 'from-warm/30 to-warm/5 border-warm/20' : 'from-accent/30 to-accent/5 border-accent/20';
+  const prefetchTarget = () => prefetchRoute(to);
+
+  return (
+    <Link
+      to={to}
+      onMouseEnter={prefetchTarget}
+      onFocus={prefetchTarget}
+      onTouchStart={prefetchTarget}
+      className={`group surface-card block bg-gradient-to-br ${toneClass}`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="hero-badge bg-black/20 text-white/90">Quick access</div>
+          <div className="mt-4 font-display text-xl font-bold text-white">{title}</div>
+          <div className="mt-2 text-sm text-slate-300">{value}</div>
+        </div>
+        <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-black/20 text-white transition duration-300 group-hover:scale-105 group-hover:border-white/20">
+          {icon}
+        </div>
+      </div>
+      <div className="mt-5 text-sm font-semibold text-accent2">Open</div>
+    </Link>
   );
 }
 
@@ -31,10 +52,10 @@ export default function HomePage() {
     let active = true;
     setLoading(true);
     api.games
-      .all()
+      .allPaginated(1)
       .then((data) => {
         if (!active) return;
-        setGames(Array.isArray(data) ? data : []);
+        setGames(Array.isArray(data?.content) ? data.content : []);
       })
       .catch((err) => {
         if (!active) return;
@@ -59,14 +80,25 @@ export default function HomePage() {
     .sort((left, right) => String(right.releaseDate || '').localeCompare(String(left.releaseDate || '')))
     .slice(0, 3);
 
+  const quickLaunch = useMemo(() => {
+    const items = [
+      { to: '/catalog', title: 'Catalog', value: 'Browse every release with AI search, filters, and paging.', tone: 'accent', icon: '⌕' },
+      { to: '/catalog?genre=Action', title: 'Genres', value: 'Jump straight into the most active collections.', tone: 'accent2', icon: '◌' },
+      { to: '/workspace/wishlist', title: 'Wishlist', value: 'Keep your saved games in one place.', tone: 'warm', icon: '♥' },
+      { to: '/workspace/purchases', title: 'Purchases', value: 'Review bought titles and recent activity.', tone: 'accent', icon: '↗' }
+    ];
+
+    return items;
+  }, []);
+
   const submitSearch = (event) => {
     event.preventDefault();
-    navigate(`/catalog?title=${encodeURIComponent(search.trim())}`);
+    navigate(`/catalog?aiQuery=${encodeURIComponent(search.trim())}`);
   };
 
   return (
     <div className="space-y-8">
-      <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+      <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="hero-panel page-surface">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(61,214,198,0.15),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(108,140,255,0.15),transparent_25%)]" />
           <div className="absolute -right-8 top-10 h-40 w-40 rounded-full bg-accent/10 blur-3xl float-slow" />
@@ -74,31 +106,62 @@ export default function HomePage() {
           <div className="relative max-w-2xl reveal-up">
             <div className="hero-badge">
               <span className="h-2 w-2 rounded-full bg-accent" />
-              Play Store inspired game marketplace
+              Game marketplace control center
             </div>
             <h1 className="mt-5 max-w-xl font-display text-4xl font-bold leading-tight text-white sm:text-6xl">
-              Discover, wishlist, and launch games in one cinematic space.
+              Everything you need, surfaced in one place.
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
-              GameSpotlight blends storefront polish with the control panels developers and admins need.
-              Browse rich listings, manage your library, and ship updates with a UI that feels fast and premium.
-            </p>
+            <div className="mt-5 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
+              <div className="metric-card">
+                <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Search</div>
+                <div className="mt-2 font-semibold text-white">AI, genre, title</div>
+              </div>
+              <div className="metric-card">
+                <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Library</div>
+                <div className="mt-2 font-semibold text-white">Wishlist, purchases</div>
+              </div>
+              <div className="metric-card">
+                <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Creator</div>
+                <div className="mt-2 font-semibold text-white">Developer workspace</div>
+              </div>
+            </div>
             <div className="mt-7 flex flex-wrap gap-3 reveal-delay-1">
-              <Link to="/catalog" className="primary-button">
+              <Link
+                to="/catalog"
+                onMouseEnter={() => prefetchRoute('/catalog')}
+                onFocus={() => prefetchRoute('/catalog')}
+                onTouchStart={() => prefetchRoute('/catalog')}
+                className="primary-button"
+              >
                 Explore catalog
               </Link>
-              <Link to="/wishlist" className="secondary-button">
-                View wishlist
+              <Link
+                to="/workspace/wishlist"
+                onMouseEnter={() => prefetchRoute('/workspace/wishlist')}
+                onFocus={() => prefetchRoute('/workspace/wishlist')}
+                onTouchStart={() => prefetchRoute('/workspace/wishlist')}
+                className="secondary-button"
+              >
+                Wishlist
+              </Link>
+              <Link
+                to="/workspace/purchases"
+                onMouseEnter={() => prefetchRoute('/workspace/purchases')}
+                onFocus={() => prefetchRoute('/workspace/purchases')}
+                onTouchStart={() => prefetchRoute('/workspace/purchases')}
+                className="secondary-button"
+              >
+                Purchases
               </Link>
             </div>
             <form onSubmit={submitSearch} className="mt-7 max-w-2xl reveal-delay-2">
-              <label className="label-text">Search games</label>
+              <label className="label-text">Quick search</label>
               <div className="mt-2 flex flex-col gap-3 sm:flex-row">
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   className="input-field flex-1"
-                  placeholder="Search by title, studio, or keyword"
+                  placeholder="Try a title, studio, genre, or alias"
                 />
                 <button type="submit" className="secondary-button sm:px-6">
                   Search
@@ -127,18 +190,24 @@ export default function HomePage() {
         </div>
 
         <div className="grid gap-4">
-          <HeroStat label="Games listed" value={String(games.length).padStart(2, '0')} />
-          <HeroStat label="Featured collections" value={String(featured.length).padStart(2, '0')} />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <HeroStat label="Games listed" value={String(games.length).padStart(2, '0')} />
+            <HeroStat label="Featured picks" value={String(featured.length).padStart(2, '0')} />
+          </div>
           <div className="surface-card reveal-up">
-            <div className="text-xs uppercase tracking-[0.28em] text-slate-400">Newest drop</div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs uppercase tracking-[0.28em] text-slate-400">Newest drop</div>
+              <Link to="/catalog" className="text-xs font-semibold uppercase tracking-[0.24em] text-accent2 hover:text-white">
+                Open catalog
+              </Link>
+            </div>
             {newest[0] ? (
               <div className="mt-4 space-y-3">
                 <div className="font-display text-2xl font-bold text-white">{newest[0].title}</div>
-                <div className="text-sm text-slate-300">{newest[0].description || 'Fresh release ready for spotlight coverage.'}</div>
                 <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.24em] text-slate-400">
-                  <span>{newest[0].genre}</span>
+                  <span>{newest[0].genre || 'Genre'}</span>
                   <span>•</span>
-                  <span>{newest[0].platform}</span>
+                  <span>{newest[0].platform || 'Platform'}</span>
                   <span>•</span>
                   <span>{formatPrice(newest[0].price)}</span>
                 </div>
@@ -153,10 +222,39 @@ export default function HomePage() {
       <section className="space-y-4 reveal-up">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h2 className="section-heading">Featured on the shelf</h2>
-            <p className="mt-1 text-sm text-slate-400">Hand-picked listings with an App Store-style presentation.</p>
+            <h2 className="section-heading">Quick launch</h2>
+            <p className="section-copy">Common actions are exposed as direct entry points instead of buried in menus.</p>
           </div>
-          <Link to="/catalog" className="text-sm font-semibold text-accent hover:text-white">
+          <Link
+            to="/catalog"
+            onMouseEnter={() => prefetchRoute('/catalog')}
+            onFocus={() => prefetchRoute('/catalog')}
+            onTouchStart={() => prefetchRoute('/catalog')}
+            className="text-sm font-semibold text-accent hover:text-white"
+          >
+            Browse all
+          </Link>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {quickLaunch.map((item) => (
+            <FeatureCard key={item.to} {...item} />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-4 reveal-up">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="section-heading">Featured on the shelf</h2>
+            <p className="section-copy">The most important listings stay visible and tappable.</p>
+          </div>
+          <Link
+            to="/catalog"
+            onMouseEnter={() => prefetchRoute('/catalog')}
+            onFocus={() => prefetchRoute('/catalog')}
+            onTouchStart={() => prefetchRoute('/catalog')}
+            className="text-sm font-semibold text-accent hover:text-white"
+          >
             View all
           </Link>
         </div>

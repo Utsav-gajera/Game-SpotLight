@@ -1,8 +1,9 @@
 package com.gamestore.wishlist.controller;
 
 import com.gamestore.wishlist.dto.WishlistDTO;
-import com.gamestore.wishlist.security.JwtService;
+import com.gamestore.wishlist.security.AuthUtils;
 import com.gamestore.wishlist.service.WishlistService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,20 +15,16 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/api/user/wishlist")
+@RequiredArgsConstructor
 public class UserWishlistController {
 
     private final WishlistService wishlistService;
-    private final JwtService jwtService;
-
-    public UserWishlistController(WishlistService wishlistService, JwtService jwtService) {
-        this.wishlistService = wishlistService;
-        this.jwtService = jwtService;
-    }
+    private final AuthUtils authUtils;
 
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> list(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        String userId = extractUsernameFromHeader(authorizationHeader);
+        String userId = authUtils.extractUsernameFromHeader(authorizationHeader);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -42,7 +39,7 @@ public class UserWishlistController {
     public ResponseEntity<Map<String, Object>> create(
             @RequestParam(defaultValue = "Favorites") String name,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        String userId = extractUsernameFromHeader(authorizationHeader);
+        String userId = authUtils.extractUsernameFromHeader(authorizationHeader);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -55,7 +52,7 @@ public class UserWishlistController {
     public ResponseEntity<Map<String, Object>> byId(
             @PathVariable String wishlistId,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        String userId = extractUsernameFromHeader(authorizationHeader);
+        String userId = authUtils.extractUsernameFromHeader(authorizationHeader);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -69,7 +66,7 @@ public class UserWishlistController {
     public ResponseEntity<Void> delete(
             @PathVariable String wishlistId,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        String userId = extractUsernameFromHeader(authorizationHeader);
+        String userId = authUtils.extractUsernameFromHeader(authorizationHeader);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -83,7 +80,7 @@ public class UserWishlistController {
             @PathVariable String wishlistId,
             @PathVariable String gameId,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        String userId = extractUsernameFromHeader(authorizationHeader);
+        String userId = authUtils.extractUsernameFromHeader(authorizationHeader);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -100,7 +97,7 @@ public class UserWishlistController {
             @PathVariable String wishlistId,
             @PathVariable String gameId,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        String userId = extractUsernameFromHeader(authorizationHeader);
+        String userId = authUtils.extractUsernameFromHeader(authorizationHeader);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -118,7 +115,7 @@ public class UserWishlistController {
             @PathVariable String oldGameId,
             @PathVariable String newGameId,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        String userId = extractUsernameFromHeader(authorizationHeader);
+        String userId = authUtils.extractUsernameFromHeader(authorizationHeader);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -128,21 +125,6 @@ public class UserWishlistController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(toClientDto(updated));
-    }
-
-    private String extractUsernameFromHeader(String authorizationHeader) {
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            return null;
-        }
-        String token = authorizationHeader.substring("Bearer ".length()).trim();
-        if (token.isEmpty()) {
-            return null;
-        }
-        try {
-            return jwtService.parseUsername(token).orElse(null);
-        } catch (RuntimeException ex) {
-            return null;
-        }
     }
 
     private Map<String, Object> toClientDto(WishlistDTO dto) {

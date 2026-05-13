@@ -9,8 +9,31 @@ services:
       - ./auth-user-service/.env
     dns:
       - 8.8.8.8
+    environment:
+      PORT: 8087
+      JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
     ports:
-      - "8081:8081"
+      - "8087:8087"
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_AUTH_API_ROOT: http://localhost:8087/api
+      VITE_GAME_API_ROOT: http://localhost:8082/api
+      VITE_PURCHASE_API_ROOT: http://localhost:8083/api
+      VITE_WISHLIST_API_ROOT: http://localhost:8084/api
+      VITE_STORAGE_API_ROOT: http://localhost:8085/api
+      VITE_SUPABASE_URL: https://wmjdpctpcfxulozvoqtx.supabase.co
+      VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtamRwY3RwY2Z4dWxvenZvcXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjU0NTEsImV4cCI6MjA5Mzc0MTQ1MX0.V86WUslacQgGBlxQ5tm-vDIlaTCuCG1fFL9YhZTZHws
+    volumes:
+      - ../client:/app
+      - frontend-node-modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - gateway
 
   game:
     build:
@@ -21,8 +44,15 @@ services:
       - 8.8.8.8
     environment:
       STORAGE_SERVICE_URL: http://storage:8085/api
+      AUTH_USER_SERVICE_URL: http://auth-user:8087/api
+      OPENSEARCH_ENABLED: "true"
+      OPENSEARCH_SYNC_ENABLED: "true"
+      SPRING_KAFKA_PROPERTIES_SSL_TRUSTSTORE_LOCATION: /app/config/aiven-broker-cert.pem
+      JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
     ports:
       - "8082:8082"
+    volumes:
+      - ./game-service/src/main/resources/aiven-broker-cert.pem:/app/config/aiven-broker-cert.pem:ro
 
   purchase:
     build:
@@ -31,8 +61,36 @@ services:
       - ./purchase-service/.env
     dns:
       - 8.8.8.8
+    environment:
+      AUTH_USER_SERVICE_URL: http://auth-user:8087/api
+      GAME_SERVICE_URL: http://game:8082/api
+      SPRING_KAFKA_PROPERTIES_SSL_TRUSTSTORE_LOCATION: /app/config/aiven-broker-cert.pem
+      JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
     ports:
       - "8083:8083"
+    volumes:
+      - ./purchase-service/src/main/resources/aiven-broker-cert.pem:/app/config/aiven-broker-cert.pem:ro
+
+  notification:
+    build:
+      context: ./notification-service
+    env_file:
+      - ./notification-service/.env
+    dns:
+      - 8.8.8.8
+    environment:
+      AUTH_USER_SERVICE_URL: http://auth-user:8087/api
+      GAME_SERVICE_URL: http://game:8082/api
+      SPRING_KAFKA_PROPERTIES_SSL_TRUSTSTORE_LOCATION: /app/config/aiven-broker-cert.pem
+      JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./game-service/src/main/resources/aiven-broker-cert.pem:/app/config/aiven-broker-cert.pem:ro
+    depends_on:
+      - auth-user
+      - game
+      - purchase
 
   wishlist:
     build:
@@ -41,6 +99,8 @@ services:
       - ./wishlist-service/.env
     dns:
       - 8.8.8.8
+    environment:
+      JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
     ports:
       - "8084:8084"
 
@@ -64,11 +124,12 @@ services:
     dns:
       - 8.8.8.8
     environment:
-      AUTH_SERVICE_URL: http://auth-user:8081
+      AUTH_SERVICE_URL: http://auth-user:8087
       GAME_SERVICE_URL: http://game:8082
       PURCHASE_SERVICE_URL: http://purchase:8083
       WISHLIST_SERVICE_URL: http://wishlist:8084
       STORAGE_SERVICE_URL: http://storage:8085
+      JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
     ports:
       - "8080:8080"
     depends_on:
@@ -77,6 +138,9 @@ services:
       - purchase
       - wishlist
       - storage
+
+volumes:
+  frontend-node-modules:
 
 # Usage:
 # 1. Copy each service's `.env.example` to `.env` and set the Atlas MongoDB URI.

@@ -28,5 +28,5 @@ mvn -DskipTests package
 ```powershell
 cd services/auth-user-service
 docker build -t auth-user-service:dev .
-docker run -p 8081:8081 -e MONGO_URI="mongodb+srv://utsav:9228224337@cluster0.yslwcbv.mongodb.net/auth-user-db?retryWrites=true&w=majority" -e JWT_SECRET="[REDACTED-JWT]" auth-user-service:dev
+docker run -p 8087:8087 -e PORT=8087 -e MONGO_URI="mongodb+srv://utsav:9228224337@cluster0.yslwcbv.mongodb.net/auth-user-db?retryWrites=true&w=majority" -e JWT_SECRET="[REDACTED-JWT]" auth-user-service:dev
 ```
