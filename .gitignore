@@ -42,6 +42,3 @@ server/src/test/resources/application-local.properties
 # Frontend dependencies and build output
 client/node_modules/
 client/dist/
-
-# Ignore service runtime config that may contain secrets
-services/*/src/main/resources/application.properties
