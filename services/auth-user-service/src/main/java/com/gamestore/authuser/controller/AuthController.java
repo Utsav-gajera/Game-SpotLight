@@ -55,7 +55,7 @@ public class AuthController {
             String token = request.accessToken();
             log.info("/api/auth/oauth called - accessToken present={}, length={}", token != null && !token.isBlank(), token == null ? 0 : Math.min(token.length(), 200));
             // Let service and GlobalExceptionHandler handle validation and errors so clients receive JSON error payloads
-            return ResponseEntity.ok(authService.exchangeSupabaseToken(token));
+            return ResponseEntity.ok(authService.exchangeSupabaseToken(token, Boolean.TRUE.equals(request.wantsDeveloper())));
     }
 
     @GetMapping("/me")

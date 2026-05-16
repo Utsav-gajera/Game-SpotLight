@@ -7,6 +7,8 @@ import com.gamestore.game.entity.Game;
 import com.gamestore.game.entity.Review;
 import com.gamestore.game.repository.GameRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.Cache;
@@ -31,7 +33,7 @@ import java.util.stream.Collectors;
 public class GameService {
 
     private static final String GAMES_CACHE = "games";
-    private static final String GAMES_CACHE_KEY = "all";
+    private static final String GAMES_CACHE_KEY = "top100";
 
     private final GameRepository gameRepository;
     private final RestTemplate restTemplate;
@@ -61,24 +63,24 @@ public class GameService {
             if (cache != null) {
                 Cache.ValueWrapper cachedValue = cache.get(GAMES_CACHE_KEY);
                 if (cachedValue != null && cachedValue.get() instanceof List<?> cachedGames) {
-                    System.out.println("[CACHE HIT] games::all retrieved from Redis Cloud");
+                    System.out.println("[CACHE HIT] games::top100 retrieved from Redis Cloud");
                     @SuppressWarnings("unchecked")
                     List<GameDTO> result = (List<GameDTO>) cachedGames;
                     return result;
                 }
             }
         } catch (RuntimeException ex) {
-            System.err.println("[CACHE ERROR] games::all read failed, falling back to MongoDB: " + ex.getMessage());
+            System.err.println("[CACHE ERROR] games::top100 read failed, falling back to MongoDB: " + ex.getMessage());
         }
 
-        System.out.println("[CACHE MISS] games::all not found in Redis Cloud, loading from MongoDB");
+        System.out.println("[CACHE MISS] games::top100 not found in Redis Cloud, loading top 100 from MongoDB");
         List<GameDTO> games;
         try {
-            games = gameRepository.findAll().stream()
+            games = gameRepository.findAll(PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createdAt"))).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
         } catch (RuntimeException ex) {
-            System.err.println("[CACHE ERROR] games::all MongoDB read failed, returning empty list: " + ex.getMessage());
+            System.err.println("[CACHE ERROR] games::top100 MongoDB read failed, returning empty list: " + ex.getMessage());
             games = new ArrayList<>();
         }
 
@@ -87,7 +89,7 @@ public class GameService {
                 cache.put(GAMES_CACHE_KEY, games);
             }
         } catch (RuntimeException ex) {
-            System.err.println("[CACHE ERROR] games::all write failed, returning MongoDB data: " + ex.getMessage());
+            System.err.println("[CACHE ERROR] games::top100 write failed, returning MongoDB data: " + ex.getMessage());
         }
 
         return games;
@@ -504,32 +506,36 @@ public class GameService {
         int pageSize = 100;
         if (page < 1) page = 1;
 
-        Cache cache = cacheManager.getCache(GAMES_CACHE);
-        String cacheKey = "page:" + page + ":size:" + pageSize;
-        try {
-            if (cache != null) {
-                Cache.ValueWrapper cachedValue = cache.get(cacheKey);
-                if (cachedValue != null && cachedValue.get() instanceof PaginationDTO<?> cached) {
-                    System.out.println("[CACHE HIT] games::" + cacheKey + " retrieved from Redis Cloud");
-                    @SuppressWarnings("unchecked")
-                    PaginationDTO<GameDTO> result = (PaginationDTO<GameDTO>) cached;
-                    return result;
-                }
-            }
-        } catch (RuntimeException ex) {
-            System.err.println("[CACHE ERROR] games::" + cacheKey + " read failed, falling back to MongoDB: " + ex.getMessage());
-            // If the cached value is corrupted (e.g. serialized as ArrayList$SubList), evict it
+        if (page == 1) {
+            Cache cache = cacheManager.getCache(GAMES_CACHE);
+            String cacheKey = GAMES_CACHE_KEY;
             try {
                 if (cache != null) {
-                    cache.evict(cacheKey);
-                    System.out.println("[CACHE EVICT] games::" + cacheKey + " evicted due to read error");
+                    Cache.ValueWrapper cachedValue = cache.get(cacheKey);
+                    if (cachedValue != null && cachedValue.get() instanceof List<?> cachedGames) {
+                        System.out.println("[CACHE HIT] games::top100 retrieved from Redis Cloud");
+                        @SuppressWarnings("unchecked")
+                        List<GameDTO> result = (List<GameDTO>) cachedGames;
+                        return PaginationDTO.of(result, page, pageSize, result.size());
+                    }
                 }
-            } catch (RuntimeException ev) {
-                System.err.println("[CACHE ERROR] games::" + cacheKey + " evict failed: " + ev.getMessage());
+            } catch (RuntimeException ex) {
+                System.err.println("[CACHE ERROR] games::top100 read failed, falling back to MongoDB: " + ex.getMessage());
+                try {
+                    if (cache != null) {
+                        cache.evict(cacheKey);
+                        System.out.println("[CACHE EVICT] games::top100 evicted due to read error");
+                    }
+                } catch (RuntimeException ev) {
+                    System.err.println("[CACHE ERROR] games::top100 evict failed: " + ev.getMessage());
+                }
             }
+
+            List<GameDTO> topGames = getAllGames();
+            return PaginationDTO.of(topGames, page, pageSize, topGames.size());
         }
 
-        System.out.println("[CACHE MISS] games::" + cacheKey + " not found in Redis Cloud, loading from MongoDB");
+        System.out.println("[CACHE BYPASS] games::page:" + page + " not cached, loading page from MongoDB");
         List<GameDTO> allGames = gameRepository.findAll().stream()
             .map(this::toDTO)
             .collect(Collectors.toList());
@@ -537,20 +543,9 @@ public class GameService {
         int start = (page - 1) * pageSize;
         int end = Math.min(start + pageSize, allGames.size());
         List<GameDTO> paginatedGames = start < allGames.size() ? allGames.subList(start, end) : List.of();
-        // Ensure we cache a concrete, directly-instantiable List implementation.
         List<GameDTO> paginatedCopy = new ArrayList<>(paginatedGames);
-        
-        PaginationDTO<GameDTO> result = PaginationDTO.of(paginatedCopy, page, pageSize, allGames.size());
 
-        try {
-            if (cache != null) {
-                cache.put(cacheKey, result);
-            }
-        } catch (RuntimeException ex) {
-            System.err.println("[CACHE ERROR] games::" + cacheKey + " write failed, returning MongoDB data: " + ex.getMessage());
-        }
-
-        return result;
+        return PaginationDTO.of(paginatedCopy, page, pageSize, allGames.size());
     }
 
     @Cacheable(value = "gamesByGenre", key = "(#genre == null ? 'all' : #genre.toLowerCase()) + ':page:' + #page + ':size:100'")

@@ -4,7 +4,7 @@ import com.gamestore.purchase.dto.PurchaseDTO;
 import com.gamestore.purchase.entity.Purchase;
 import com.gamestore.purchase.producer.PurchaseEventProducer;
 import com.gamestore.purchase.repository.PurchaseRepository;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -111,13 +111,37 @@ public class PurchaseService {
         Purchase purchase = new Purchase();
         purchase.setUserId(dto.getUserId());
         purchase.setGameId(dto.getGameId());
-        purchase.setPrice(dto.getPrice());
+
+        // If client omitted the price, attempt to resolve it from the game service.
+        Double price = dto.getPrice();
+        if (price == null) {
+            try {
+                java.util.Optional<?> gsOpt = brevoNotificationService.fetchGameSummary(dto.getGameId());
+                if (gsOpt.isPresent()) {
+                    Object gs = gsOpt.get();
+                    try {
+                        // GameSummary is a private record inside BrevoNotificationService; use reflection-safe access
+                        java.lang.reflect.Method m = gs.getClass().getMethod("price");
+                        Object p = m.invoke(gs);
+                        if (p instanceof Double) {
+                            price = (Double) p;
+                        } else if (p instanceof Number) {
+                            price = ((Number) p).doubleValue();
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        purchase.setPrice(price);
         purchase.setPurchaseStatus(dto.getPurchaseStatus() != null ? dto.getPurchaseStatus() : "COMPLETED");
         try {
             Purchase saved = purchaseRepository.save(purchase);
             PurchaseDTO created = toDTO(saved);
             return created;
-        } catch (DuplicateKeyException ex) {
+        } catch (DataIntegrityViolationException ex) {
             throw new IllegalStateException("You already own this game.");
         }
     }

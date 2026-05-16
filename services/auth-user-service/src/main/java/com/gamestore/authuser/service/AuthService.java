@@ -23,13 +23,19 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -76,7 +82,7 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         Set<String> roles = new LinkedHashSet<>();
         String normalizedRole = normalizeRole(request.role());
-        if ("ADMIN".equals(normalizedRole) && userRepository.existsByRolesContaining("ADMIN")) {
+        if ("ADMIN".equals(normalizedRole) && userRepository.existsByRole("ADMIN")) {
             throw new IllegalArgumentException("Only one admin account is allowed");
         }
         roles.add(normalizedRole);
@@ -104,7 +110,7 @@ public class AuthService {
         return new AuthResponse(token, jwtService.getExpirationSeconds(), toResponse(user));
     }
 
-    public AuthResponse exchangeSupabaseToken(String accessToken) {
+    public AuthResponse exchangeSupabaseToken(String accessToken, boolean wantsDeveloper) {
         if (accessToken == null || accessToken.isBlank()) {
             throw new IllegalArgumentException("Supabase access token is required");
         }
@@ -122,19 +128,25 @@ public class AuthService {
         synchronized (this) {
             user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
             if (user == null) {
-                user = createSupabaseUser(normalizedEmail, displayName);
+                log.info("No local user found for email={}, creating local user", normalizedEmail);
+                user = createSupabaseUser(normalizedEmail, displayName, wantsDeveloper);
+                log.info("Created local user id={} username={} email={}", user.getId(), user.getUsername(), user.getEmail());
             }
         }
 
         if ((displayName != null && !displayName.isBlank()) && (user.getDisplayName() == null || user.getDisplayName().isBlank())) {
+            log.info("Setting displayName for user id={} to {}", user.getId(), displayName.trim());
             user.setDisplayName(displayName.trim());
             user = userRepository.save(user);
+            log.info("Updated displayName for user id={}", user.getId());
         }
 
         Set<String> normalizedRoles = normalizeRoles(user.getRoles());
         if (!normalizedRoles.equals(user.getRoles())) {
+            log.info("Normalizing roles for user id={}. OldRoles={} NewRoles={}", user.getId(), user.getRoles(), normalizedRoles);
             user.setRoles(normalizedRoles);
             user = userRepository.save(user);
+            log.info("Roles updated for user id={}", user.getId());
         }
 
         String token = jwtService.generateToken(user.getUsername(), normalizedRoles);
@@ -157,12 +169,19 @@ public class AuthService {
 
         Set<String> normalizedRoles = normalizeRoles(user.getRoles());
         if (!normalizedRoles.contains("DEVELOPER") && !normalizedRoles.contains("ADMIN")) {
+            if (!user.isDeveloperOptIn()) {
+                throw new IllegalArgumentException("This account is locked as a normal user");
+            }
             Set<String> promotedRoles = new LinkedHashSet<>();
             promotedRoles.add("DEVELOPER");
             promotedRoles.addAll(normalizedRoles);
             user.setRoles(promotedRoles);
             user = userRepository.save(user);
             normalizedRoles = normalizeRoles(user.getRoles());
+            if (!normalizedRoles.equals(user.getRoles())) {
+                user.setRoles(normalizedRoles);
+                user = userRepository.save(user);
+            }
         } else if (!normalizedRoles.equals(user.getRoles())) {
             user.setRoles(normalizedRoles);
             user = userRepository.save(user);
@@ -174,7 +193,7 @@ public class AuthService {
     }
 
     public UserResponse bootstrapFirstAdmin(RegisterRequest request) {
-        if (userRepository.existsByRolesContaining("ADMIN")) {
+        if (userRepository.existsByRole("ADMIN")) {
             throw new IllegalArgumentException("Admin account already exists. Use the normal registration flow.");
         }
 
@@ -202,8 +221,16 @@ public class AuthService {
     }
 
     public List<UserResponse> listUsers() {
-        return userRepository.findAll().stream()
-                .map(this::toResponse)
+        Map<String, User> uniqueUsers = userRepository.findAll().stream()
+            .collect(Collectors.toMap(
+                User::getId,
+                user -> user,
+                (existing, ignored) -> existing,
+                LinkedHashMap::new
+            ));
+
+        return uniqueUsers.values().stream()
+            .map(this::toResponse)
                 .toList();
     }
 
@@ -213,6 +240,20 @@ public class AuthService {
         }
 
         userRepository.deleteById(userId);
+    }
+
+    public int cleanupRoleAssignments() {
+        int updated = 0;
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            Set<String> normalizedRoles = normalizeRoles(user.getRoles());
+            if (!normalizedRoles.equals(user.getRoles())) {
+                user.setRoles(new LinkedHashSet<>(normalizedRoles));
+                userRepository.save(user);
+                updated++;
+            }
+        }
+        return updated;
     }
 
     private UserResponse toResponse(User user) {
@@ -255,14 +296,18 @@ public class AuthService {
         }
     }
 
-    private User createSupabaseUser(String email, String displayName) {
+    private User createSupabaseUser(String email, String displayName, boolean developerOptIn) {
         User user = new User();
         user.setEmail(email);
         user.setDisplayName(displayName == null || displayName.isBlank() ? email : displayName.trim());
         user.setUsername(generateUniqueUsername(user.getDisplayName(), email));
         user.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
         user.setRoles(new LinkedHashSet<>(Set.of("NORMAL_USER")));
-        return userRepository.save(user);
+        user.setDeveloperOptIn(developerOptIn);
+        log.info("Persisting new Supabase-linked user username={} email={}", user.getUsername(), user.getEmail());
+        User saved = userRepository.save(user);
+        log.info("Persisted user id={} username={}", saved.getId(), saved.getUsername());
+        return saved;
     }
 
     private String generateUniqueUsername(String displayName, String email) {
@@ -322,11 +367,21 @@ public class AuthService {
             return Set.of("NORMAL_USER");
         }
 
-        return roles.stream()
+        Set<String> normalized = roles.stream()
                 .filter(role -> role != null && !role.isBlank())
                 .map(role -> role.trim().toUpperCase(Locale.ROOT))
                 .map(role -> "USER".equals(role) ? "NORMAL_USER" : role)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (normalized.contains("ADMIN")) {
+            return Set.of("ADMIN");
+        }
+
+        if (normalized.contains("DEVELOPER")) {
+            normalized.remove("NORMAL_USER");
+        }
+
+        return normalized;
     }
 
     private String normalizeRole(String role) {

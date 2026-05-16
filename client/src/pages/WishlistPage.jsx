@@ -19,10 +19,10 @@ function Section({ title, subtitle, children }) {
 
 function Field({ label, children }) {
   return (
-    <label className="block">
+    <div className="block">
       <span className="label-text">{label}</span>
       {children}
-    </label>
+    </div>
   );
 }
 

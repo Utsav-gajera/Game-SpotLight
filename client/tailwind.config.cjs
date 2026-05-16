@@ -8,12 +8,12 @@ module.exports = {
         display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif']
       },
       colors: {
-        ink: '#04111f',
-        panel: '#0b1730',
-        panelSoft: '#102344',
-        accent: '#3dd6c6',
-        accent2: '#6c8cff',
-        warm: '#ffb86b'
+        ink: '#030615',
+        panel: '#061028',
+        panelSoft: '#0a1a33',
+        accent: '#26b7a8',
+        accent2: '#4f6ef5',
+        warm: '#e08a2f'
       },
       boxShadow: {
         glow: '0 0 0 1px rgba(61, 214, 198, 0.18), 0 24px 80px rgba(0, 0, 0, 0.45)'

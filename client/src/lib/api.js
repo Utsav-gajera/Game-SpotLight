@@ -224,9 +224,9 @@ export const api = {
     becomeDeveloper: () => requestWithRoot(AUTH_API_ROOT, '/auth/developer', { method: 'POST' }),
     logout: () => requestWithRoot(AUTH_API_ROOT, '/auth/logout', { method: 'POST' }),
     session: () => requestWithRoot(AUTH_API_ROOT, '/auth/session'),
-    supabaseExchange: (accessToken) => requestWithRoot(AUTH_API_ROOT, '/auth/oauth', {
+    supabaseExchange: (accessToken, wantsDeveloper = false) => requestWithRoot(AUTH_API_ROOT, '/auth/oauth', {
       method: 'POST',
-      body: { accessToken }
+      body: { accessToken, wantsDeveloper }
     })
   },
   games: {

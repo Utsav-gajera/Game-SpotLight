@@ -1,123 +1,157 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 function normalize(options) {
   return (options || []).map((o) => (typeof o === 'string' ? { value: o, label: o } : o));
 }
 
-export default function PrettySelect({ options = [], value, onChange, placeholder = 'Select...', className = '', id }) {
+export default function PrettySelect({ options = [], value, onChange, placeholder = 'Select...', className = '', id, ariaLabel = 'Select option' }) {
   const opts = normalize(options);
-  const containerRef = useRef(null);
-  const listRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  const containerRef = useRef(null);
+  const listRef = useRef(null);
 
-  const selected = opts.find((o) => String(o.value) === String(value));
+  const selectedIndex = useMemo(
+    () => opts.findIndex((option) => String(option.value) === String(value)),
+    [opts, value]
+  );
+
+  const selected = selectedIndex >= 0 ? opts[selectedIndex] : null;
 
   useEffect(() => {
-    if (open) {
-      const selectedIndex = Math.max(
-        0,
-        opts.findIndex((o) => String(o.value) === String(value))
-      );
-      setHighlight(selectedIndex >= 0 ? selectedIndex : 0);
+    if (!open) {
+      return;
     }
-  }, [open, value, opts]);
+
+    const nextHighlight = selectedIndex >= 0 ? selectedIndex : 0;
+    setHighlight(nextHighlight);
+  }, [open, selectedIndex]);
 
   useEffect(() => {
-    if (open && listRef.current) {
-      const el = listRef.current.querySelector('[data-highlight]');
-      if (el) el.scrollIntoView({ block: 'nearest' });
-    }
-  }, [open, highlight]);
-
-  useEffect(() => {
-    const onDoc = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+    const handlePointerDown = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
-  const toggle = () => {
-    setOpen((v) => !v);
+  useEffect(() => {
+    if (!open || !listRef.current) {
+      return;
+    }
+
+    const activeOption = listRef.current.querySelector('[data-highlight="true"]');
+    if (activeOption) {
+      activeOption.scrollIntoView({ block: 'nearest' });
+    }
+  }, [open, highlight]);
+
+  const commitSelection = (option) => {
+    onChange && onChange(option.value);
+    setOpen(false);
   };
 
-  const handleKey = (e) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
+  const handleKeyDown = (event) => {
+    if (!opts.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
       setOpen(true);
-      setHighlight((h) => Math.min(h + 1, opts.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
+      setHighlight((current) => Math.min(current + 1, opts.length - 1));
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
       setOpen(true);
-      setHighlight((h) => Math.max(h - 1, 0));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const pick = opts[highlight];
-      if (pick) {
-        onChange && onChange(pick.value);
+      setHighlight((current) => Math.max(current - 1, 0));
+      return;
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (open && opts[highlight]) {
+        commitSelection(opts[highlight]);
+      } else {
+        setOpen(true);
       }
-      setOpen(false);
-    } else if (e.key === 'Escape') {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
       setOpen(false);
     }
   };
 
-  const onSelect = (opt, idx) => {
-    onChange && onChange(opt.value);
-    setHighlight(idx);
-    setOpen(false);
-  };
-
   return (
-    <div ref={containerRef} className={`relative ${className}`} id={id}>
+    <div ref={containerRef} className={`pretty-select-root ${className}`} id={id}>
       <button
         type="button"
+        aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={toggle}
-        onKeyDown={handleKey}
-        className="input-field select-field flex items-center justify-between gap-3 text-left shadow-glow"
+        aria-controls={id ? `${id}-listbox` : undefined}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={handleKeyDown}
+        className="pretty-select-trigger input-field flex w-full items-center justify-between gap-3 text-left shadow-glow"
       >
         <span className="min-w-0 flex-1 truncate">
-          <span className={`${selected ? 'text-white' : 'text-slate-400'}`}>{selected ? selected.label : placeholder}</span>
+          <span className={selected ? 'text-white' : 'text-slate-400'}>{selected ? selected.label : placeholder}</span>
         </span>
-        <svg className={`h-4 w-4 shrink-0 text-white transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg className={`h-4 w-4 shrink-0 text-slate-300 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
-      <div
-        ref={listRef}
-        role="listbox"
-        tabIndex={-1}
-        className={`absolute left-0 right-0 z-50 mt-2 max-h-64 w-full overflow-auto rounded-[1.5rem] border border-white/10 bg-[#071425]/95 p-2 shadow-[0_24px_70px_rgba(0,0,0,0.45)] backdrop-blur-2xl transition-transform duration-200 transform origin-top ${open ? 'opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-95'}`}
-      >
-        {opts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 px-4 py-4 text-sm text-slate-400">
-            No options available.
-          </div>
-        ) : null}
-        {opts.map((opt, idx) => {
-          const isHighlighted = idx === highlight;
-          return (
-            <div
-              key={`${opt.value}-${idx}`}
-              role="option"
-              aria-selected={String(opt.value) === String(value)}
-              data-highlight={isHighlighted ? '1' : undefined}
-              onMouseEnter={() => setHighlight(idx)}
-              onClick={() => onSelect(opt, idx)}
-              className={`block cursor-pointer rounded-2xl px-4 py-3 text-sm transition ${isHighlighted ? 'bg-accent/18 text-white ring-1 ring-accent/20' : 'text-slate-200 hover:bg-white/5 hover:text-white'}`}
-            >
-              <div className="font-semibold">{opt.label}</div>
-              {opt.description ? <div className="mt-1 text-xs leading-5 text-slate-400">{opt.description}</div> : null}
-            </div>
-          );
-        })}
-      </div>
+      {open ? (
+        <div
+          id={id ? `${id}-listbox` : undefined}
+          ref={listRef}
+          role="listbox"
+          aria-label={ariaLabel}
+          className="pretty-select-menu reveal-up"
+        >
+          {opts.length === 0 ? (
+            <div className="pretty-select-empty">No options available.</div>
+          ) : null}
+
+          {opts.map((option, index) => {
+            const isActive = index === highlight;
+            const isSelected = String(option.value) === String(value);
+            return (
+              <button
+                key={`${option.value}-${option.label}-${index}`}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                data-highlight={isActive ? 'true' : 'false'}
+                onMouseEnter={() => setHighlight(index)}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => commitSelection(option)}
+                className={`pretty-select-option ${isActive ? 'is-active' : ''} ${isSelected ? 'is-selected' : ''}`}
+              >
+                <div className="font-semibold text-white">{option.label}</div>
+                {option.description ? <div className="mt-1 text-xs leading-5 text-slate-400">{option.description}</div> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

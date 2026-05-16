@@ -1,9 +1,23 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api, storeAuthToken } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext(null);
 const APP_TOKEN_KEY = 'gameSpotlightToken';
+
+// Simple logger that silences debug/info in production
+const __isDev = import.meta.env.DEV;
+const logger = {
+  debug: (...args) => { if (__isDev) console.debug(...args); },
+  info: (...args) => { if (__isDev) console.info(...args); },
+  warn: (...args) => console.warn(...args),
+  error: (...args) => console.error(...args)
+};
+
+function isAuthServiceUnavailable(error) {
+  const message = String(error?.message || '');
+  return error?.name === 'TypeError' && /Failed to fetch|NetworkError|ERR_CONNECTION_REFUSED/i.test(message);
+}
 
 function rankRole(role) {
   switch (role) {
@@ -67,27 +81,34 @@ async function loadSessionUser() {
       const profile = await api.auth.session();
       return normalizeUser(profile, undefined, avatarUrl);
     } catch (error) {
-      console.debug('[Auth] app session lookup failed, falling back to Supabase token exchange', error);
+      if (isAuthServiceUnavailable(error)) {
+        return null;
+      }
+      logger.debug('[Auth] app session lookup failed, falling back to Supabase token exchange', error);
       storeAuthToken(null);
     }
   }
 
   if (accessToken) {
-    if (lastSupabaseAccessTokenRef.current === accessToken) {
+      if (lastSupabaseAccessTokenRef.current === accessToken) {
       return null;
     }
 
     try {
-      console.debug('[Auth] exchanging supabase access token, length=', String(accessToken).length);
-      const exchange = await api.auth.supabaseExchange(accessToken);
-      console.debug('[Auth] supabaseExchange response=', exchange);
+      logger.debug('[Auth] exchanging supabase access token, length=', String(accessToken).length);
+      const wantsDeveloper = localStorage.getItem('pendingDeveloperPromotion') === 'true';
+      const exchange = await api.auth.supabaseExchange(accessToken, wantsDeveloper);
+      logger.debug('[Auth] supabaseExchange response=', exchange);
       lastSupabaseAccessTokenRef.current = accessToken;
       if (exchange?.token) {
         storeAuthToken(exchange.token);
       }
       return normalizeUser(exchange?.user, undefined, avatarUrl);
     } catch (err) {
-      console.error('[Auth] supabaseExchange failed', err);
+      if (isAuthServiceUnavailable(err)) {
+        return null;
+      }
+      logger.error('[Auth] supabaseExchange failed', err);
       lastSupabaseAccessTokenRef.current = accessToken;
       if (!hasAppToken && [400, 401, 403].includes(err?.status)) {
         await supabase.auth.signOut();
@@ -154,7 +175,8 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const exchange = await api.auth.supabaseExchange(accessToken.trim());
+        const wantsDeveloper = localStorage.getItem('pendingDeveloperPromotion') === 'true';
+        const exchange = await api.auth.supabaseExchange(accessToken.trim(), wantsDeveloper);
         lastSupabaseAccessTokenRef.current = accessToken;
         if (exchange?.token) {
           storeAuthToken(exchange.token);
@@ -204,7 +226,7 @@ export function AuthProvider({ children }) {
             setUser(nextUser);
           }
         } catch (error) {
-          console.error('[Auth] app session refresh failed', error);
+          logger.error('[Auth] app session refresh failed', error);
         } finally {
           setLoading(false);
         }
@@ -219,7 +241,9 @@ export function AuthProvider({ children }) {
       try {
         await resolveSupabaseSession(session);
       } catch (error) {
-        console.error('[Auth] Supabase session sync failed', error);
+        if (!isAuthServiceUnavailable(error)) {
+          logger.error('[Auth] Supabase session sync failed', error);
+        }
       } finally {
         setLoading(false);
       }
@@ -242,6 +266,47 @@ export function AuthProvider({ children }) {
       subscription?.unsubscribe();
     };
   }, []);
+
+  // Handle pending developer promotion after successful login
+  useEffect(() => {
+    const handlePendingPromotion = async () => {
+      if (!user) return;
+      
+      const pendingPromotion = localStorage.getItem('pendingDeveloperPromotion');
+      if (!pendingPromotion) return;
+      
+      // Don't promote if already a developer or admin
+      if (user.role === 'DEVELOPER' || user.role === 'ADMIN') {
+        localStorage.removeItem('pendingDeveloperPromotion');
+        return;
+      }
+
+      // Only attempt promotion once per signup
+      const promotionAttempted = localStorage.getItem('promotionAttempted');
+      if (promotionAttempted) {
+        return;
+      }
+
+      try {
+        localStorage.setItem('promotionAttempted', 'true');
+        const response = await api.auth.becomeDeveloper();
+        if (response?.token) {
+          storeAuthToken(response.token);
+        }
+        const nextUser = normalizeUser(response?.user, undefined, user?.avatarUrl || null);
+        if (nextUser) {
+          setUser(nextUser);
+        }
+        localStorage.removeItem('pendingDeveloperPromotion');
+      } catch (error) {
+        logger.error('[Auth] Automatic developer promotion failed', error);
+        // Don't clear pendingDeveloperPromotion on error, let it retry
+        localStorage.removeItem('promotionAttempted');
+      }
+    };
+
+    handlePendingPromotion();
+  }, [user]);
 
   const login = async (provider) => {
     const redirectTo = `${window.location.origin}/auth`;
@@ -268,6 +333,9 @@ export function AuthProvider({ children }) {
     } finally {
       storeAuthToken(null);
       setUser(null);
+      // Clear developer promotion flags on logout
+      localStorage.removeItem('pendingDeveloperPromotion');
+      localStorage.removeItem('promotionAttempted');
     }
   };
 
@@ -312,3 +380,5 @@ export function useAuth() {
   }
   return context;
 }
+
+

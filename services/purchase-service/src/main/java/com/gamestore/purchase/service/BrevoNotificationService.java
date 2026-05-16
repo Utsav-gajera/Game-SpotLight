@@ -112,6 +112,14 @@ public class BrevoNotificationService {
         }
     }
 
+    /**
+     * Public helper to fetch a game's summary (id, title, price).
+     * Used by other services that need the game's current price when clients omit it.
+     */
+    public Optional<GameSummary> fetchGameSummary(String gameId) {
+        return resolveGame(gameId);
+    }
+
     @Retryable(
         retryFor = Exception.class,
         maxAttempts = 3,

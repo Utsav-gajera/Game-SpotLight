@@ -3,7 +3,7 @@ package com.gamestore.storage.service;
 import com.gamestore.storage.dto.FileMetadataDTO;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import okhttp3.MultipartBody;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -15,16 +15,17 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import okio.BufferedSink;
 
 @Service
 public class StorageService {
@@ -56,7 +57,13 @@ public class StorageService {
 
     public StorageService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        this.httpClient = new OkHttpClient();
+        this.httpClient = new OkHttpClient.Builder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .readTimeout(Duration.ofSeconds(120))
+                .writeTimeout(Duration.ofSeconds(120))
+                .callTimeout(Duration.ofMinutes(3))
+                .retryOnConnectionFailure(true)
+                .build();
     }
 
     @PostConstruct
@@ -91,7 +98,7 @@ public class StorageService {
         
         String fileUrl;
         if (isSupabaseEnabled) {
-            fileUrl = uploadToSupabase(storedFileName, fileType, file);
+            fileUrl = uploadToSupabase(storedFileName, fileType, fileSize, file);
         } else {
             fileUrl = uploadToLocalStorage(storedFileName, file);
         }
@@ -113,7 +120,7 @@ public class StorageService {
         return convertToDTO(storedFile);
     }
 
-    private String uploadToSupabase(String fileName, String fileType, MultipartFile file) throws IOException {
+    private String uploadToSupabase(String fileName, String fileType, Long fileSize, MultipartFile file) throws IOException {
         // Determine bucket based on file type
         String bucket = fileType != null && fileType.startsWith("image/") ? gameImagesBucket : gameFilesBucket;
         
@@ -122,7 +129,28 @@ public class StorageService {
         System.out.println("📤 Uploading to Supabase bucket '" + bucket + "': " + fileName);
         
         try {
-            RequestBody requestBody = RequestBody.create(file.getBytes());
+            RequestBody requestBody = new RequestBody() {
+                @Override
+                public MediaType contentType() {
+                    return MediaType.parse(fileType != null ? fileType : "application/octet-stream");
+                }
+
+                @Override
+                public long contentLength() {
+                    return fileSize != null ? fileSize : file.getSize();
+                }
+
+                @Override
+                public void writeTo(BufferedSink sink) throws IOException {
+                    try (InputStream inputStream = file.getInputStream()) {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        while ((bytesRead = inputStream.read(buffer)) != -1) {
+                            sink.write(buffer, 0, bytesRead);
+                        }
+                    }
+                }
+            };
             Request request = new Request.Builder()
                     .url(uploadUrl)
                     .post(requestBody)

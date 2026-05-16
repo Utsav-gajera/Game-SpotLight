@@ -24,8 +24,38 @@ public class JwtService {
 
     public JwtService(@Value("${jwt.secret}") String secret,
                       @Value("${jwt.expiration-seconds:604800}") long expirationSeconds) {
-        byte[] secretBytes = secret.length() >= 32 ? secret.getBytes(StandardCharsets.UTF_8) : Decoders.BASE64.decode(secret);
-        this.key = Keys.hmacShaKeyFor(secretBytes);
+        byte[] secretBytes;
+        if (secret.length() >= 32) {
+            secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        } else {
+            try {
+                secretBytes = Decoders.BASE64.decode(secret);
+            } catch (io.jsonwebtoken.io.DecodingException e) {
+                try {
+                    // Accept URL-safe base64 (contains '-' and '_')
+                    secretBytes = Decoders.BASE64URL.decode(secret);
+                } catch (io.jsonwebtoken.io.DecodingException ex) {
+                    // Fallback to raw UTF-8 bytes if decoding fails
+                    secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+                }
+            }
+        }
+
+        // Ensure key is strong enough for HS256. If too short, derive a 256-bit key via SHA-256.
+        SecretKey tmpKey;
+        try {
+            tmpKey = Keys.hmacShaKeyFor(secretBytes);
+        } catch (io.jsonwebtoken.security.WeakKeyException weak) {
+            try {
+                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                byte[] hashed = md.digest(secretBytes);
+                tmpKey = Keys.hmacShaKeyFor(hashed);
+            } catch (Exception ex) {
+                // Last resort: use original bytes (this will likely fail later).
+                tmpKey = Keys.hmacShaKeyFor(secretBytes);
+            }
+        }
+        this.key = tmpKey;
         this.expirationSeconds = expirationSeconds;
     }
 

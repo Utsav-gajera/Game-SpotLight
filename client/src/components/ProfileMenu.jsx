@@ -2,9 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProfileMenu() {
-  const { user, logout, becomeDeveloper, isDeveloper, isAdmin } = useAuth();
+  const { user, logout, isDeveloper, isAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -39,16 +38,6 @@ export default function ProfileMenu() {
   const handleLogout = async () => {
     setIsOpen(false);
     await logout();
-  };
-
-  const handleBecomeDeveloper = async () => {
-    setBusy(true);
-    try {
-      await becomeDeveloper();
-      setIsOpen(false);
-    } finally {
-      setBusy(false);
-    }
   };
 
   return (
@@ -112,26 +101,6 @@ export default function ProfileMenu() {
 
           {/* Menu Items */}
           <div className="py-2">
-            {!isDeveloper && !isAdmin ? (
-              <button
-                type="button"
-                onClick={handleBecomeDeveloper}
-                disabled={busy}
-                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <svg
-                  className="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M12 5v14" />
-                  <path d="M5 12h14" />
-                </svg>
-                {busy ? 'Promoting...' : 'Become Developer'}
-              </button>
-            ) : null}
             <button
               type="button"
               onClick={handleLogout}

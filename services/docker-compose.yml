@@ -7,6 +7,8 @@ services:
       context: ./auth-user-service
     env_file:
       - ./auth-user-service/.env
+    volumes:
+      - ./auth-user-service/ca/aiven-ca.pem:/app/ca/aiven-ca.pem:ro
     dns:
       - 8.8.8.8
     environment:
@@ -70,6 +72,7 @@ services:
       - "8083:8083"
     volumes:
       - ./purchase-service/src/main/resources/aiven-broker-cert.pem:/app/config/aiven-broker-cert.pem:ro
+      - ./auth-user-service/ca/aiven-ca.pem:/app/ca/aiven-ca.pem:ro
 
   notification:
     build:
