@@ -5,6 +5,9 @@
 
 set -e  # Exit on error
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 echo "🚀 GameSpotlight Deployment Script"
 echo "===================================="
 echo ""
@@ -36,7 +39,7 @@ fi
 echo -e "${GREEN}✓ All prerequisites installed${NC}"
 
 # Check if .env file exists
-if [ ! -f ".env" ]; then
+if [ ! -f "$ROOT_DIR/.env" ]; then
     echo -e "${RED}❌ .env file not found!${NC}"
     echo "Copy deployment/.env.template to .env and fill in your credentials"
     exit 1
@@ -47,20 +50,29 @@ echo ""
 
 # Build all services
 echo "🔨 Building services..."
-mvn clean package -DskipTests -q
 
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Build successful${NC}"
-else
-    echo -e "${RED}❌ Build failed${NC}"
-    exit 1
-fi
+SERVICES=(
+    "auth-user-service"
+    "game-service"
+    "purchase-service"
+    "wishlist-service"
+    "notification-service"
+    "storage-service"
+    "gateway"
+)
+
+for service_dir in "${SERVICES[@]}"; do
+    echo "  • Building ${service_dir}"
+    (cd "$ROOT_DIR/services/$service_dir" && mvn clean package -DskipTests -q)
+done
+
+echo -e "${GREEN}✓ Build successful${NC}"
 echo ""
 
 # Create systemd services
 echo "📝 Creating systemd service files..."
 
-SERVICES=(
+SYSTEMD_SERVICES=(
     "auth-service:8087:auth-user-service"
     "game-service:8082:game-service"
     "purchase-service:8083:purchase-service"
@@ -70,7 +82,7 @@ SERVICES=(
     "gateway:8080:gateway"
 )
 
-for service_config in "${SERVICES[@]}"; do
+for service_config in "${SYSTEMD_SERVICES[@]}"; do
     IFS=':' read -r service_name port jar_name <<< "$service_config"
     
     sudo tee /etc/systemd/system/${service_name}.service > /dev/null << EOF
@@ -82,8 +94,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=$(pwd)
-EnvironmentFile=$(pwd)/.env
+WorkingDirectory=$ROOT_DIR
+EnvironmentFile=$ROOT_DIR/.env
 ExecStart=/usr/bin/java -Xmx512m -jar services/${jar_name}/target/${jar_name}-0.0.1-SNAPSHOT.jar --server.port=\${${service_name^^}_PORT:-${port}}
 Restart=always
 RestartSec=10
@@ -109,7 +121,7 @@ echo ""
 
 # Enable services
 echo "⚙️  Enabling services..."
-for service_config in "${SERVICES[@]}"; do
+for service_config in "${SYSTEMD_SERVICES[@]}"; do
     IFS=':' read -r service_name _ _ <<< "$service_config"
     sudo systemctl enable ${service_name}.service
 done
@@ -118,7 +130,7 @@ echo ""
 
 # Start services
 echo "▶️  Starting services..."
-for service_config in "${SERVICES[@]}"; do
+for service_config in "${SYSTEMD_SERVICES[@]}"; do
     IFS=':' read -r service_name _ _ <<< "$service_config"
     sudo systemctl start ${service_name}.service
     sleep 2
@@ -132,7 +144,7 @@ echo ""
 
 # Configure Nginx
 echo "🌐 Configuring Nginx..."
-sudo cp deployment/nginx.conf /etc/nginx/sites-available/gamespotlight
+sudo cp "$SCRIPT_DIR/nginx.conf" /etc/nginx/sites-available/gamespotlight
 sudo ln -sf /etc/nginx/sites-available/gamespotlight /etc/nginx/sites-enabled/gamespotlight
 
 # Test Nginx config
@@ -153,7 +165,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Running migrations..."
     
     # Get credentials from .env
-    source .env
+    source "$ROOT_DIR/.env"
     
     echo "  Running auth-user-service migration..."
     mvn -f services/auth-user-service/pom.xml \

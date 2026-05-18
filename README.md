@@ -60,8 +60,10 @@ Buckets already created in Supabase can be connected with environment variables.
 Required env vars:
 
 ```powershell
-SUPABASE_URL="https://<project-ref>.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="<service-role-key>"
+AUTH_SUPABASE_URL="https://<auth-project-ref>.supabase.co"
+AUTH_SUPABASE_ANON_KEY="<auth-anon-key>"
+STORAGE_SUPABASE_URL="https://<storage-project-ref>.supabase.co"
+STORAGE_SUPABASE_KEY="<storage-service-role-key>"
 ```
 
 Optional bucket names (defaults shown):

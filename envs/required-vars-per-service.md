@@ -16,8 +16,8 @@ auth-user-service
 - POSTGRES_PASSWORD
 - JWT_SECRET
 - JWT_EXPIRATION_SECONDS
-- SUPABASE_URL (optional — only if using Supabase)
-- SUPABASE_KEY / SUPABASE_ANON_KEY (optional)
+- AUTH_SUPABASE_URL (optional — only if using Supabase login/session verification)
+- AUTH_SUPABASE_ANON_KEY (optional)
 - PORT
 
 purchase-service
@@ -50,7 +50,7 @@ notification-service
 
 storage-service
 - STORAGE_MONGO_URI
-- SUPABASE_URL, SUPABASE_KEY (if using Supabase)
+- STORAGE_SUPABASE_URL, STORAGE_SUPABASE_KEY (if using Supabase)
 - SUPABASE_BUCKET_GAME_FILES, SUPABASE_BUCKET_GAME_IMAGES
 - STORAGE_PROVIDER (local|s3|gcs)
 - STORAGE_BUCKET_NAME, STORAGE_ACCESS_KEY, STORAGE_SECRET_KEY (if S3/GCS)

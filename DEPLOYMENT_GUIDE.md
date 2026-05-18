@@ -1,6 +1,42 @@
 # Complete Free Deployment Guide - GameSpotlight
 
 ## Architecture Overview
+## Progress summary (as of May 18, 2026)
+
+- **`.env` uploaded to VM and secured**: Completed — `/opt/Game-Spotlight/.env` exists with permissions `600`.
+- **Repo sanitization**: Completed — live secrets removed and placeholders restored in `deployment/.env.template` and docs.
+- **Supabase split (AUTH vs STORAGE)**: Completed — services updated to use `AUTH_SUPABASE_*` and `STORAGE_SUPABASE_*`.
+- **Flyway migrations added**: Partially completed — migration scripts present, but CI/production run is pending.
+- **Frontend hardening & dev-opt-in flow**: Completed — client and server-side checks in place.
+
+## Next steps (priority order)
+
+1. Build & deploy on VM (high)
+  - SSH to the VM, `cd /opt/Game-Spotlight`
+  - Run:
+
+```bash
+./mvnw -B clean package -DskipTests || mvn -B clean package -DskipTests
+chmod +x deployment/deploy.sh
+bash deployment/deploy.sh
+```
+
+2. Run Flyway migrations via CI (high)
+  - Add required GitHub Secrets for DB credentials (`AUTH_DB_*`, `PURCHASE_DB_*`).
+  - Dispatch the `flyway-migrations` workflow or let CI run on merge.
+
+3. Validate services and Nginx (high)
+  - Check `systemctl status` for each service.
+  - Curl `http://localhost:8080/actuator/health` (or service-specific health endpoints).
+  - Inspect logs: `journalctl -u <service>.service -f`.
+
+4. Configure domain and SSL (medium)
+  - Point DNS to the VM public IP and use Certbot to obtain certificates.
+
+5. Monitoring & follow-up (medium)
+  - Configure log rotation, alerts, and basic monitoring for uptime and error rates.
+
+If you want, I can run the build+deploy command block for you now (I will not run anything without your confirmation).
 ```
 Internet
   ↓
@@ -48,6 +84,8 @@ External Managed Services (Already configured)
 4. Click **Create**
 5. Wait for instance to be "Running" (5-10 minutes)
 6. Copy the **Public IP Address** (e.g., `140.238.123.45`)
+
+**Note about boot-volume cost:** The instance creation estimate may include a small monthly charge for the VM's boot block volume (example shown: ~$2.76/month for a ~46.6 GB boot disk). This is a storage cost for the boot volume, not the compute shape. To avoid the charge: open the instance's Storage settings (click **Edit** → **Boot volume**), choose the smallest boot volume option allowed by the image or enable a truly Always‑Free image/shape, do not attach extra block volumes, and disable paid backups/snapshots. Re-check the cost estimate — the boot-volume charge disappears when no paid block storage is selected.
 
 ### Step 3: Configure Firewall (Oracle Cloud)
 1. Click on your instance
@@ -131,10 +169,13 @@ REDIS_USERNAME=default
 REDIS_PASSWORD=YOUR_REDIS_PASSWORD
 REDIS_SSL=false
 
-# Supabase (Storage)
-SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_KEY=YOUR_SERVICE_ROLE_KEY
-SUPABASE_ANON_KEY=YOUR_ANON_KEY
+# Supabase (Auth service project)
+AUTH_SUPABASE_URL=https://YOUR_AUTH_PROJECT.supabase.co
+AUTH_SUPABASE_ANON_KEY=YOUR_AUTH_ANON_KEY
+
+# Supabase (Storage service project)
+STORAGE_SUPABASE_URL=https://YOUR_STORAGE_PROJECT.supabase.co
+STORAGE_SUPABASE_KEY=YOUR_STORAGE_SERVICE_ROLE_KEY
 SUPABASE_BUCKET_GAME_FILES=game-files
 SUPABASE_BUCKET_GAME_IMAGES=game-images
 
@@ -166,19 +207,25 @@ EOF
 
 ### Step 9: Download Kafka Certificate
 ```bash
+# In this repo, the Kafka cert is already committed in the service resources.
+# Copy it into the VM repo root so the runtime path matches .env and systemd.
 cd /opt/GameSpotlight/Game-SpotLight
-# Get from Aiven console or:
-curl -o aiven-broker-cert.pem https://api.aiven.io/path/to/cert
-# Or add to services/.env files directly
+cp services/game-service/src/main/resources/aiven-broker-cert.pem ./aiven-broker-cert.pem
+# If you prefer, download the cert from Aiven Console and place it here instead.
 ```
 
 ### Step 10: Build All Services
 ```bash
-cd /opt/GameSpotlight/Game-SpotLight
-mvn clean package -DskipTests
+# This repo does not have a top-level pom.xml, so build each service module.
+cd /opt/GameSpotlight/Game-SpotLight/services/auth-user-service && mvn clean package -DskipTests
+cd /opt/GameSpotlight/Game-SpotLight/services/game-service && mvn clean package -DskipTests
+cd /opt/GameSpotlight/Game-SpotLight/services/purchase-service && mvn clean package -DskipTests
+cd /opt/GameSpotlight/Game-SpotLight/services/wishlist-service && mvn clean package -DskipTests
+cd /opt/GameSpotlight/Game-SpotLight/services/notification-service && mvn clean package -DskipTests
+cd /opt/GameSpotlight/Game-SpotLight/services/storage-service && mvn clean package -DskipTests
+cd /opt/GameSpotlight/Game-SpotLight/services/gateway && mvn clean package -DskipTests
 
-# Takes ~15-20 minutes. Output JARs will be in:
-# services/*/target/*-SNAPSHOT.jar
+# Output JARs will be in each module's target directory.
 ```
 
 ---

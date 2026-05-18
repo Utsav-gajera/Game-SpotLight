@@ -681,7 +681,7 @@ public class GameService {
         }
 
         // Extract fileId from direct Supabase URL
-        // URL format: https://qdohwmucmbjsotaibsbh.supabase.co/storage/v1/object/public/game-files/UUID.ext
+        // URL format: https://<storage-project-ref>.supabase.co/storage/v1/object/public/game-files/UUID.ext
         String fileId = extractFileIdFromUrl(gameFileUrl);
         if (fileId == null) {
             System.err.println("⚠️ Could not extract fileId from URL: " + gameFileUrl);

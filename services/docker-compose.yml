@@ -27,8 +27,9 @@ services:
       VITE_PURCHASE_API_ROOT: http://localhost:8083/api
       VITE_WISHLIST_API_ROOT: http://localhost:8084/api
       VITE_STORAGE_API_ROOT: http://localhost:8085/api
-      VITE_SUPABASE_URL: https://wmjdpctpcfxulozvoqtx.supabase.co
-      VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtamRwY3RwY2Z4dWxvenZvcXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjU0NTEsImV4cCI6MjA5Mzc0MTQ1MX0.V86WUslacQgGBlxQ5tm-vDIlaTCuCG1fFL9YhZTZHws
+      # Frontend should use the auth Supabase project for login/session flows.
+      VITE_SUPABASE_URL: ${AUTH_SUPABASE_URL}
+      VITE_SUPABASE_ANON_KEY: ${AUTH_SUPABASE_ANON_KEY}
     volumes:
       - ../client:/app
       - frontend-node-modules:/app/node_modules

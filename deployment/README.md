@@ -69,7 +69,8 @@ nano .env  # Fill in your credentials
 - `JWT_SECRET` - generate strong key
 - `KAFKA_API_SECRET` - from Aiven
 - `REDIS_PASSWORD` - from Aiven
-- `SUPABASE_URL`, `SUPABASE_KEY` - from Supabase console
+- `AUTH_SUPABASE_URL`, `AUTH_SUPABASE_ANON_KEY` - auth Supabase project
+- `STORAGE_SUPABASE_URL`, `STORAGE_SUPABASE_KEY` - storage Supabase project
 - `BREVO_SMTP_PASSWORD` - from Brevo account
 - `MAIL_FROM_ADDRESS` - your email
 
