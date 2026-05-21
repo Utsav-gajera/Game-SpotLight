@@ -3,8 +3,7 @@
 
 services:
   auth-user:
-    build:
-      context: ./auth-user-service
+    image: local-auth-user-service
     env_file:
       - ./auth-user-service/.env
     volumes:
@@ -38,8 +37,7 @@ services:
     # Frontend will route API calls through nginx during local testing (see docker-compose.local.yml)
 
   game:
-    build:
-      context: ./game-service
+    image: local-game-service
     env_file:
       - ./game-service/.env
     dns:
@@ -57,8 +55,7 @@ services:
       - ./game-service/src/main/resources/aiven-broker-cert.pem:/app/config/aiven-broker-cert.pem:ro
 
   purchase:
-    build:
-      context: ./purchase-service
+    image: local-purchase-service
     env_file:
       - ./purchase-service/.env
     dns:
@@ -75,8 +72,7 @@ services:
       - ./auth-user-service/ca/aiven-ca.pem:/app/ca/aiven-ca.pem:ro
 
   notification:
-    build:
-      context: ./notification-service
+    image: local-notification-service
     env_file:
       - ./notification-service/.env
     dns:
@@ -96,8 +92,7 @@ services:
       - purchase
 
   wishlist:
-    build:
-      context: ./wishlist-service
+    image: local-wishlist-service
     env_file:
       - ./wishlist-service/.env
     dns:
@@ -108,8 +103,7 @@ services:
       - "8084:8084"
 
   storage:
-    build:
-      context: ./storage-service
+    image: local-storage-service
     env_file:
       - ./storage-service/.env
     dns:
