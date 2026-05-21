@@ -3,7 +3,8 @@
 
 services:
   auth-user:
-    image: local-auth-user-service
+    build:
+      context: ./auth-user-service
     env_file:
       - ./auth-user-service/.env
     volumes:
@@ -27,8 +28,8 @@ services:
       VITE_WISHLIST_API_ROOT: http://localhost:8080/api
       VITE_STORAGE_API_ROOT: http://localhost:8080/api
       # Frontend should use the auth Supabase project for login/session flows.
-      VITE_SUPABASE_URL: ${AUTH_SUPABASE_URL:-https://wmjdpctpcfxulozvoqtx.supabase.co}
-      VITE_SUPABASE_ANON_KEY: ${AUTH_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtamRwY3RwY2Z4dWxvenZvcXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjU0NTEsImV4cCI6MjA5Mzc0MTQ1MX0.V86WUslacQgGBlxQ5tm-vDIlaTCuCG1fFL9YhZTZHws}
+      VITE_SUPABASE_URL: ${AUTH_SUPABASE_URL}
+      VITE_SUPABASE_ANON_KEY: ${AUTH_SUPABASE_ANON_KEY}
     volumes:
       - ../client:/app
       - frontend-node-modules:/app/node_modules
@@ -37,7 +38,8 @@ services:
     # Frontend will route API calls through nginx during local testing (see docker-compose.local.yml)
 
   game:
-    image: local-game-service
+    build:
+      context: ./game-service
     env_file:
       - ./game-service/.env
     dns:
@@ -55,7 +57,8 @@ services:
       - ./game-service/src/main/resources/aiven-broker-cert.pem:/app/config/aiven-broker-cert.pem:ro
 
   purchase:
-    image: local-purchase-service
+    build:
+      context: ./purchase-service
     env_file:
       - ./purchase-service/.env
     dns:
@@ -72,7 +75,8 @@ services:
       - ./auth-user-service/ca/aiven-ca.pem:/app/ca/aiven-ca.pem:ro
 
   notification:
-    image: local-notification-service
+    build:
+      context: ./notification-service
     env_file:
       - ./notification-service/.env
     dns:
@@ -92,7 +96,8 @@ services:
       - purchase
 
   wishlist:
-    image: local-wishlist-service
+    build:
+      context: ./wishlist-service
     env_file:
       - ./wishlist-service/.env
     dns:
@@ -103,7 +108,8 @@ services:
       - "8084:8084"
 
   storage:
-    image: local-storage-service
+    build:
+      context: ./storage-service
     env_file:
       - ./storage-service/.env
     dns:
