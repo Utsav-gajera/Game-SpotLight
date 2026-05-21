@@ -22,11 +22,11 @@ services:
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     environment:
-      VITE_AUTH_API_ROOT: http://localhost:8087/api
-      VITE_GAME_API_ROOT: http://localhost:8082/api
-      VITE_PURCHASE_API_ROOT: http://localhost:8083/api
-      VITE_WISHLIST_API_ROOT: http://localhost:8084/api
-      VITE_STORAGE_API_ROOT: http://localhost:8085/api
+      VITE_AUTH_API_ROOT: http://localhost:8080/api
+      VITE_GAME_API_ROOT: http://localhost:8080/api
+      VITE_PURCHASE_API_ROOT: http://localhost:8080/api
+      VITE_WISHLIST_API_ROOT: http://localhost:8080/api
+      VITE_STORAGE_API_ROOT: http://localhost:8080/api
       # Frontend should use the auth Supabase project for login/session flows.
       VITE_SUPABASE_URL: ${AUTH_SUPABASE_URL}
       VITE_SUPABASE_ANON_KEY: ${AUTH_SUPABASE_ANON_KEY}
@@ -35,8 +35,7 @@ services:
       - frontend-node-modules:/app/node_modules
     ports:
       - "5173:5173"
-    depends_on:
-      - gateway
+    # Frontend will route API calls through nginx during local testing (see docker-compose.local.yml)
 
   game:
     build:
@@ -120,28 +119,7 @@ services:
     volumes:
       - ./storage-files:/app/files
 
-  gateway:
-    build:
-      context: ./gateway
-    env_file:
-      - ./gateway/.env
-    dns:
-      - 8.8.8.8
-    environment:
-      AUTH_SERVICE_URL: http://auth-user:8087
-      GAME_SERVICE_URL: http://game:8082
-      PURCHASE_SERVICE_URL: http://purchase:8083
-      WISHLIST_SERVICE_URL: http://wishlist:8084
-      STORAGE_SERVICE_URL: http://storage:8085
-      JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
-    ports:
-      - "8080:8080"
-    depends_on:
-      - auth-user
-      - game
-      - purchase
-      - wishlist
-      - storage
+
 
 volumes:
   frontend-node-modules:

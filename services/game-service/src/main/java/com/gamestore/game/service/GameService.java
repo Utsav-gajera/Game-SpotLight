@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Service
@@ -680,19 +682,11 @@ public class GameService {
             throw new Exception("No game file URL available");
         }
 
-        // Extract fileId from direct Supabase URL
-        // URL format: https://<storage-project-ref>.supabase.co/storage/v1/object/public/game-files/UUID.ext
-        String fileId = extractFileIdFromUrl(gameFileUrl);
-        if (fileId == null) {
-            System.err.println("⚠️ Could not extract fileId from URL: " + gameFileUrl);
-            return gameFileUrl; // Fallback to original URL
-        }
-
         try {
-            String signedUrlEndpoint = storageServiceUrl + "/storage/signed-url/" + fileId;
+            String signedUrlEndpoint = storageServiceUrl + "/storage/signed-url?fileUrl=" + URLEncoder.encode(gameFileUrl, StandardCharsets.UTF_8);
             Map<String, String> response = restTemplate.getForObject(signedUrlEndpoint, Map.class);
             if (response != null && response.containsKey("url")) {
-                System.out.println("✅ Generated signed URL for fileId: " + fileId);
+                System.out.println("✅ Generated signed URL for game file URL");
                 return response.get("url");
             }
         } catch (Exception e) {
@@ -700,18 +694,5 @@ public class GameService {
         }
 
         return gameFileUrl; // Fallback to original URL
-    }
-
-    private String extractFileIdFromUrl(String url) {
-        if (url == null || !url.contains("/game-files/")) {
-            return null;
-        }
-        String[] parts = url.split("/game-files/");
-        if (parts.length > 1) {
-            // Return the filename without extension as fileId
-            String filename = parts[1].split("\\?")[0]; // Remove query params
-            return filename.replaceAll("\\.[^.]*$", ""); // Remove extension
-        }
-        return null;
     }
 }

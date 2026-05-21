@@ -124,4 +124,18 @@ public class StorageController {
                     .body(Map.of("error", "Failed to generate signed URL"));
         }
     }
+
+    @GetMapping("/signed-url")
+    public ResponseEntity<Map<String, String>> getSignedUrlByFileUrl(
+            @RequestParam("fileUrl") String fileUrl,
+            @RequestParam(value = "expiresIn", defaultValue = "3600") int expiresInSeconds) {
+        try {
+            String signedUrl = storageService.getSignedDownloadUrlFromFileUrl(fileUrl, expiresInSeconds);
+            return ResponseEntity.ok(Map.of("url", signedUrl));
+        } catch (Exception e) {
+            System.err.println("⚠️ Failed to generate signed URL for fileUrl=" + fileUrl + ": " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to generate signed URL"));
+        }
+    }
 }

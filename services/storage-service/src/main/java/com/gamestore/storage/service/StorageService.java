@@ -15,11 +15,14 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Base64;
 import java.util.ArrayList;
 import java.util.List;
@@ -265,28 +268,15 @@ public class StorageService {
             throw new IOException("File not found: " + fileId);
         }
 
-        if (!isSupabaseEnabled) {
-            throw new IOException("Signed URLs require Supabase");
+        return createSupabaseSignedDownloadUrl(storedFile.filePath, expiresInSeconds, "fileId=" + fileId);
+    }
+
+    public String getSignedDownloadUrlFromFileUrl(String fileUrl, int expiresInSeconds) throws IOException {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            throw new IOException("No file URL provided");
         }
 
-        String filePath = storedFile.filePath;
-        if (!filePath.startsWith("http")) {
-            throw new IOException("Legacy file path detected. Cannot generate signed URL for: " + filePath);
-        }
-
-        SupabaseObjectRef ref = resolveSupabaseObjectRef(filePath);
-        if (ref == null) {
-            throw new IOException("Could not parse Supabase URL: " + filePath);
-        }
-
-        // Diagnostic: log the resolved bucket and object path to help debug "File not found" issues.
-        System.out.println("🔍 Signed URL request for fileId=" + fileId + " -> bucket='" + ref.bucket + "', path='" + ref.objectPath + "'");
-
-        // Return backend proxy endpoint for downloads (supports private buckets via service-role key)
-        // The backend will fetch from Supabase and stream to client
-        String proxyUrl = "/api/storage/files/" + fileId + "/download";
-        System.out.println("✅ Generated download proxy URL for " + fileId + " -> " + proxyUrl);
-        return proxyUrl;
+        return createSupabaseSignedDownloadUrl(decodeFileUrl(fileUrl), expiresInSeconds, "fileUrl=" + fileUrl);
         
     }
 
@@ -432,6 +422,89 @@ public class StorageService {
         }
 
         return null;
+    }
+
+    private String createSupabaseSignedDownloadUrl(String fileUrl, int expiresInSeconds, String debugLabel) throws IOException {
+        if (!isSupabaseEnabled) {
+            throw new IOException("Signed URLs require Supabase");
+        }
+
+        SupabaseObjectRef ref = resolveSupabaseObjectRef(fileUrl);
+        if (ref == null) {
+            throw new IOException("Could not parse Supabase URL: " + fileUrl);
+        }
+
+        String signUrl = supabaseUrl.replaceAll("/$", "") + "/storage/v1/object/sign/" + ref.bucket + "/" + ref.objectPath;
+        System.out.println("🔍 Signed URL request for " + debugLabel + " -> bucket='" + ref.bucket + "', path='" + ref.objectPath + "'");
+
+        String bodyJson = "{\"expiresIn\":" + expiresInSeconds + "}";
+        RequestBody requestBody = new RequestBody() {
+            @Override
+            public MediaType contentType() {
+                return MediaType.parse("application/json; charset=utf-8");
+            }
+
+            @Override
+            public long contentLength() {
+                return bodyJson.getBytes(StandardCharsets.UTF_8).length;
+            }
+
+            @Override
+            public void writeTo(BufferedSink sink) throws IOException {
+                sink.writeString(bodyJson, StandardCharsets.UTF_8);
+            }
+        };
+
+        Request request = new Request.Builder()
+                .url(signUrl)
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer " + supabaseKey)
+                .addHeader("apikey", supabaseKey)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful() || response.body() == null) {
+                throw new IOException("Supabase signed URL request failed: " + response.code() + " " + response.message());
+            }
+
+            Map<String, Object> payload = objectMapper.readValue(
+                    response.body().string(),
+                    new TypeReference<Map<String, Object>>() {}
+            );
+
+            Object signedUrlValue = payload.containsKey("signedURL") ? payload.get("signedURL") : payload.get("signedUrl");
+            if (signedUrlValue == null) {
+                throw new IOException("Supabase did not return a signed URL");
+            }
+
+            String signedUrl = signedUrlValue.toString();
+            if (signedUrl.startsWith("http")) {
+                return signedUrl;
+            }
+
+            String baseUrl = supabaseUrl.replaceAll("/$", "") + "/storage/v1";
+            if (signedUrl.startsWith("/")) {
+                return baseUrl + signedUrl;
+            }
+            return baseUrl + "/" + signedUrl;
+        }
+    }
+
+    private String decodeFileUrl(String fileUrl) {
+        String decoded = fileUrl;
+        for (int i = 0; i < 2; i++) {
+            try {
+                String next = URLDecoder.decode(decoded, StandardCharsets.UTF_8);
+                if (next.equals(decoded)) {
+                    break;
+                }
+                decoded = next;
+            } catch (IllegalArgumentException e) {
+                break;
+            }
+        }
+        return decoded;
     }
 
     private static final class SupabaseObjectRef {
