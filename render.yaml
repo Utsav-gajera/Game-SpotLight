@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: nginx
+    env: docker
+    dockerfilePath: services/nginx/Dockerfile
+    plan: starter
+    envVars:
+      - key: GAME_SERVICE_HOST
+        value: game-service.internal:8082
+      - key: STORAGE_SERVICE_HOST
+        value: storage-service.internal:8085
+      - key: AUTH_SERVICE_HOST
+        value: auth-user-service.internal:8087
+
+  - type: web
+    name: game-service
+    env: docker
+    dockerfilePath: services/game-service/Dockerfile
+    plan: starter
+    internal: true
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+  - type: web
+    name: storage-service
+    env: docker
+    dockerfilePath: services/storage-service/Dockerfile
+    plan: starter
+    internal: true
+    envVars:
+      - key: STORAGE_SUPABASE_URL
+        value: https://qdohwmucmbjsotaibsbh.supabase.co
+      - key: STORAGE_SUPABASE_KEY
+        fromSecret: SUPABASE_SERVICE_ROLE_KEY
+    disks:
+      - path: /app/files
+        size_gb: 10
+
+  - type: web
+    name: auth-user-service
+    env: docker
+    dockerfilePath: services/auth-user-service/Dockerfile
+    plan: starter
+    internal: true
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod

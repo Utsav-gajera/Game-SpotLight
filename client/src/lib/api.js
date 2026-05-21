@@ -116,7 +116,8 @@ export function downloadFile(url, fileName, onProgress = null, expectedSizeBytes
 
       const xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
-      xhr.withCredentials = true;
+      // Public Supabase object URLs must be fetched without credentials,
+      // otherwise the browser rejects wildcard CORS responses.
       xhr.responseType = 'blob';
 
       xhr.onprogress = (event) => {

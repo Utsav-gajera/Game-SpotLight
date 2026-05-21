@@ -38,6 +38,7 @@ server/src/test/resources/application-local.properties
 
 # Environment file (copy from .env.example)
 .env
+services/.env.production
 
 # Frontend dependencies and build output
 client/node_modules/
