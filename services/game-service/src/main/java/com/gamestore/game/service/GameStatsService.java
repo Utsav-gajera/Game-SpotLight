@@ -35,7 +35,7 @@ public class GameStatsService {
      *
      * @param event the purchase created event
      */
-    @KafkaListener(topics = "game.purchases", groupId = "game-service")
+    @KafkaListener(topics = "game.purchases", groupId = "game-service", autoStartup = "${app.kafka.listeners-enabled:false}")
     public void handlePurchaseCreatedEvent(PurchaseCreatedEvent event) {
         try {
             String processedKey = (event.getIdempotencyKey() == null || event.getIdempotencyKey().isBlank())
@@ -94,7 +94,7 @@ public class GameStatsService {
         }
     }
 
-    @KafkaListener(topics = "game.downloads", groupId = "game-service")
+    @KafkaListener(topics = "game.downloads", groupId = "game-service", autoStartup = "${app.kafka.listeners-enabled:false}")
     public void handleDownloadCreatedEvent(DownloadCreatedEvent event) {
         recordDownloadCreatedEvent(event);
     }

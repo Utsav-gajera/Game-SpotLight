@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 
 export default function AuthPage() {
   const { user } = useAuth();
@@ -13,6 +13,7 @@ export default function AuthPage() {
   const isDeveloper = user?.role === 'DEVELOPER';
   const isAdmin = user?.role === 'ADMIN';
   const canBecomeDeveloper = !isNormalUser && !isDeveloper && !isAdmin;
+  const showSupabaseSetupWarning = !isSupabaseConfigured;
 
   const handleDeveloperChange = (e) => {
     if (!canBecomeDeveloper) return;
@@ -63,48 +64,54 @@ export default function AuthPage() {
 
           {/* Auth providers */}
           <div className="space-y-4">
-            <Auth
-              supabaseClient={supabase}
-              providers={['google', 'github']}
-              socialLayout="vertical"
-              magicLink={true}
-              appearance={{
-                theme: ThemeSupa,
-                variables: {
-                  default: {
-                    colors: {
-                      brand: '#26b7a8',
-                      brandAccent: '#4f6ef5',
-                      brandButtonText: '#ffffff',
-                      defaultButtonBackground: '#ffffff/10',
-                      defaultButtonBackgroundHover: '#ffffff/20',
-                      defaultButtonBorder: '#ffffff/20',
-                      defaultButtonText: '#ffffff',
-                      dividerBackground: '#ffffff/10',
-                      inputBackground: '#ffffff/5',
-                      inputBorder: '#ffffff/10',
-                      inputBorderFocus: '#26b7a8',
-                      inputBorderHover: '#ffffff/20',
-                      inputPlaceholder: '#94a3b8',
-                      inputText: '#ffffff',
-                      messageText: '#e2e8f0',
-                      messageTextDanger: '#f87171',
-                      messageBackground: '#1e293b',
-                      messageBackgroundDanger: '#7f1d1d',
-                    },
-                    borderWidths: {
-                      buttonBorderWidth: '1px',
-                      inputBorderWidth: '1px',
-                    },
-                    radii: {
-                      borderRadiusButton: '1rem',
-                      buttonBorderRadius: '1rem',
-                      inputBorderRadius: '1rem',
+            {showSupabaseSetupWarning ? (
+              <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
+                Supabase login is not configured in this frontend session. Set <span className="font-semibold">VITE_SUPABASE_URL</span> and <span className="font-semibold">VITE_SUPABASE_ANON_KEY</span>, then restart the dev server.
+              </div>
+            ) : (
+              <Auth
+                supabaseClient={supabase}
+                providers={['google', 'github']}
+                socialLayout="vertical"
+                magicLink={true}
+                appearance={{
+                  theme: ThemeSupa,
+                  variables: {
+                    default: {
+                      colors: {
+                        brand: '#26b7a8',
+                        brandAccent: '#4f6ef5',
+                        brandButtonText: '#ffffff',
+                        defaultButtonBackground: '#ffffff/10',
+                        defaultButtonBackgroundHover: '#ffffff/20',
+                        defaultButtonBorder: '#ffffff/20',
+                        defaultButtonText: '#ffffff',
+                        dividerBackground: '#ffffff/10',
+                        inputBackground: '#ffffff/5',
+                        inputBorder: '#ffffff/10',
+                        inputBorderFocus: '#26b7a8',
+                        inputBorderHover: '#ffffff/20',
+                        inputPlaceholder: '#94a3b8',
+                        inputText: '#ffffff',
+                        messageText: '#e2e8f0',
+                        messageTextDanger: '#f87171',
+                        messageBackground: '#1e293b',
+                        messageBackgroundDanger: '#7f1d1d',
+                      },
+                      borderWidths: {
+                        buttonBorderWidth: '1px',
+                        inputBorderWidth: '1px',
+                      },
+                      radii: {
+                        borderRadiusButton: '1rem',
+                        buttonBorderRadius: '1rem',
+                        inputBorderRadius: '1rem',
+                      },
                     },
                   },
-                },
-              }}
-            />
+                }}
+              />
+            )}
           </div>
 
           {/* Divider with text */}

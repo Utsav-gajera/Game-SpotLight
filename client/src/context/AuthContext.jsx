@@ -199,7 +199,9 @@ export function AuthProvider({ children }) {
           storeAuthToken(null);
           if (!cancelled) {
             setUser(null);
+            setBootstrapError('');
           }
+          return null;
         }
 
         throw error;
@@ -241,7 +243,12 @@ export function AuthProvider({ children }) {
       try {
         await resolveSupabaseSession(session);
       } catch (error) {
-        if (!isAuthServiceUnavailable(error)) {
+        if ([400, 401, 403].includes(error?.status)) {
+          if (!cancelled) {
+            setUser(null);
+            setBootstrapError('');
+          }
+        } else if (!isAuthServiceUnavailable(error)) {
           logger.error('[Auth] Supabase session sync failed', error);
         }
       } finally {

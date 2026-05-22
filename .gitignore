@@ -43,3 +43,8 @@ services/.env.production
 # Frontend dependencies and build output
 client/node_modules/
 client/dist/
+
+# Ignore all per-service .env files and local envs
+**/.env
+**/*.env.local
+vm.env.local

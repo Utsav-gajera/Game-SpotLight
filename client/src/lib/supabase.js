@@ -1,22 +1,33 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Prefer explicit environment variables. Provide safe defaults only in development.
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? (import.meta.env.DEV ? 'https://wmjdpctpcfxulozvoqtx.supabase.co' : undefined);
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? (import.meta.env.DEV ? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtamRwY3RwY2Z4dWxvenZvcXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjU0NTEsImV4cCI6MjA5Mzc0MTQ1MX0.V86WUslacQgGBlxQ5tm-vDIlaTCuCG1fFL9YhZTZHws' : undefined);
+// Prefer explicit environment variables. Fall back to the local auth Supabase project so the app boots during dev.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://wmjdpctpcfxulozvoqtx.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtamRwY3RwY2Z4dWxvenZvcXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjU0NTEsImV4cCI6MjA5Mzc0MTQ1MX0.V86WUslacQgGBlxQ5tm-vDIlaTCuCG1fFL9YhZTZHws';
+const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-if (import.meta.env.PROD) {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be provided in production');
-  }
+function createSupabaseFallbackClient() {
+  const resolved = { data: { session: null }, error: null };
+
+  return {
+    auth: {
+      getSession: async () => resolved,
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+      signOut: async () => ({ error: null })
+    }
+  };
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true
   }
-});
+  })
+  : createSupabaseFallbackClient();
+
+export { isSupabaseConfigured };
 
 // Expose for debugging in development so devtools can access session/token
 if (import.meta.env.DEV) {

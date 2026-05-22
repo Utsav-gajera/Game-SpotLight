@@ -15,7 +15,7 @@ public class NotificationConsumer {
 
     private final BrevoNotificationService brevoNotificationService;
 
-    @KafkaListener(topics = "${app.kafka.topics.game-created:game.created}", groupId = "${spring.kafka.consumer.group-id:notification-service}")
+    @KafkaListener(topics = "${app.kafka.topics.game-created:game.created}", groupId = "${spring.kafka.consumer.group-id:notification-service}", autoStartup = "${app.kafka.listeners-enabled:false}")
     public void onGameCreated(GameCreatedEvent event) {
         if (event == null) {
             log.warn("Received null GameCreatedEvent");
@@ -26,7 +26,7 @@ public class NotificationConsumer {
         brevoNotificationService.sendGameCreatedEmail(event.getDeveloperUsername(), event.getTitle());
     }
 
-    @KafkaListener(topics = "${app.kafka.topics.purchase-created:game.purchases}", groupId = "${spring.kafka.consumer.group-id:notification-service}")
+    @KafkaListener(topics = "${app.kafka.topics.purchase-created:game.purchases}", groupId = "${spring.kafka.consumer.group-id:notification-service}", autoStartup = "${app.kafka.listeners-enabled:false}")
     public void onPurchaseCreated(PurchaseCreatedEvent event) {
         if (event == null) {
             log.warn("Received null PurchaseCreatedEvent");
