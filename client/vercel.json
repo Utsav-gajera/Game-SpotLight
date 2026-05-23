@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://api.https://game-spotlight.onrender.com/api/$1" }
+  ]
+}

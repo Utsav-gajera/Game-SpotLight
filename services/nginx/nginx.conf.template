@@ -13,13 +13,22 @@ http {
   keepalive_timeout 65;
 
   upstream game_service {
-    server $GAME_SERVICE_HOST;
+    server @GAME_SERVICE_HOST@;
+  }
+  upstream purchase_service {
+    server @PURCHASE_SERVICE_HOST@;
+  }
+  upstream wishlist_service {
+    server @WISHLIST_SERVICE_HOST@;
+  }
+  upstream notification_service {
+    server @NOTIFICATION_SERVICE_HOST@;
   }
   upstream storage_service {
-    server $STORAGE_SERVICE_HOST;
+    server @STORAGE_SERVICE_HOST@;
   }
   upstream auth_service {
-    server $AUTH_SERVICE_HOST;
+    server @AUTH_SERVICE_HOST@;
   }
 
   server {
@@ -29,6 +38,30 @@ http {
     # API routing
     location /api/games/ {
       proxy_pass http://game_service;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/purchases/ {
+      proxy_pass http://purchase_service;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/wishlist/ {
+      proxy_pass http://wishlist_service;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/notifications/ {
+      proxy_pass http://notification_service;
       proxy_set_header Host $host;
       proxy_set_header X-Real-IP $remote_addr;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
