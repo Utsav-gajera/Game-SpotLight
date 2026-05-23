@@ -25,12 +25,7 @@ Vercel (frontend)
 ------------------
 1. Import the `client/` project into Vercel.
 2. Set project environment variables for production (point to gateway):
-   - `VITE_GAME_API_ROOT = https://api.game-spotlight.onrender.com/api`
-   - `VITE_PURCHASE_API_ROOT = https://api.game-spotlight.onrender.com/api`
-   - `VITE_WISHLIST_API_ROOT = https://api.game-spotlight.onrender.com/api`
-   - `VITE_AUTH_API_ROOT = https://api.game-spotlight.onrender.com/api`
-   - `VITE_STORAGE_API_ROOT = https://api.game-spotlight.onrender.com/api`
-   - `VITE_NOTIFICATION_API_ROOT = https://api.game-spotlight.onrender.com/api`
+   - `VITE_API_ROOT = https://api.game-spotlight.onrender.com` (gateway base, no trailing `/api`)
 3. Optional: use `client/vercel.json` to rewrite `/api/*` to the gateway domain.
 
 Notes

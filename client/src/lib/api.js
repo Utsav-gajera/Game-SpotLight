@@ -1,9 +1,16 @@
 const API_ROOT = '/api';
-const AUTH_API_ROOT = import.meta.env.VITE_AUTH_API_ROOT || 'http://localhost:8087/api';
-const GAME_API_ROOT = import.meta.env.VITE_GAME_API_ROOT || 'http://localhost:8082/api';
-const STORAGE_API_ROOT = import.meta.env.VITE_STORAGE_API_ROOT || 'http://localhost:8085/api';
-const PURCHASE_API_ROOT = import.meta.env.VITE_PURCHASE_API_ROOT || 'http://localhost:8083/api';
-const WISHLIST_API_ROOT = import.meta.env.VITE_WISHLIST_API_ROOT || 'http://localhost:8084/api';
+const GLOBAL_API_ROOT = import.meta.env.VITE_API_ROOT ? import.meta.env.VITE_API_ROOT.replace(/\/api\/?$/, '') : null;
+
+function makeRoot(specificEnvKey, localDefault) {
+  if (GLOBAL_API_ROOT) return `${GLOBAL_API_ROOT}/api`;
+  return import.meta.env[specificEnvKey] || localDefault;
+}
+
+const AUTH_API_ROOT = makeRoot('VITE_AUTH_API_ROOT', 'http://localhost:8087/api');
+const GAME_API_ROOT = makeRoot('VITE_GAME_API_ROOT', 'http://localhost:8082/api');
+const STORAGE_API_ROOT = makeRoot('VITE_STORAGE_API_ROOT', 'http://localhost:8085/api');
+const PURCHASE_API_ROOT = makeRoot('VITE_PURCHASE_API_ROOT', 'http://localhost:8083/api');
+const WISHLIST_API_ROOT = makeRoot('VITE_WISHLIST_API_ROOT', 'http://localhost:8084/api');
 const TOKEN_KEY = 'gameSpotlightToken';
 const STORAGE_ORIGIN = STORAGE_API_ROOT.replace(/\/api\/?$/, '');
 

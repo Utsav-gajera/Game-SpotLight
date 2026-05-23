@@ -3,6 +3,8 @@ Render Gateway — Setup Guide
 
 This document describes step-by-step instructions and exact environment variable names/values to deploy the single public gateway (nginx) on Render, plus an example `render.yaml` you can use for Infrastructure-as-Code.
 
+If you want the free-only version, use [FREE_ONLY_SETUP.md](FREE_ONLY_SETUP.md) instead.
+
 Quick summary
 -------------
 - Service: Gateway (nginx) — exposes `/api/*` and proxies to internal backend services.
@@ -38,6 +40,10 @@ Render UI steps (recommended)
 4. Under "Environment" (Environment Variables), add the keys from "Exact environment variable names" above and their values.
 5. (Optional) Mark any secret values as `Secret` in Render if you add credentials.
 6. Save and click "Create Web Service". Render will build the image and deploy.
+
+Important note
+--------------
+The example backend hostnames in this document are local-development placeholders. For a free-only setup, use [FREE_ONLY_SETUP.md](FREE_ONLY_SETUP.md).
 
 render.yaml example (IaC)
 -------------------------
@@ -102,9 +108,7 @@ Security notes
 
 Troubleshooting
 ---------------
-- If nginx fails with "host not found in upstream" when Render runs the container, the gateway cannot resolve the backend hostnames. Confirm that:
-  - The backend services are deployed and are reachable from the same private network or Render account.
-  - Use the internal service hostnames Render documents for private services, not external URLs.
+- If nginx fails with "host not found in upstream" when Render runs the container, the gateway cannot resolve the backend hostnames. Confirm that the service names or URLs you set are actually reachable from the gateway container.
 - For local testing, use `host.docker.internal:PORT` as environment values when running the gateway container on your machine (we already use this pattern in local compose/run).
 
 Next steps checklist
