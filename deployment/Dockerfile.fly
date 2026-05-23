@@ -1,0 +1,39 @@
+FROM openjdk:17-jdk-slim
+
+# Install nginx and curl for healthchecks
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends nginx curl ca-certificates procps && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create service dir
+RUN mkdir -p /srv/services /etc/nginx/conf.d
+
+# Copy nginx template and entrypoint (existing in repo)
+COPY services/nginx/nginx.conf.template /etc/nginx/nginx.conf
+COPY services/nginx/docker-entrypoint.sh /usr/local/bin/nginx-entrypoint.sh
+RUN chmod +x /usr/local/bin/nginx-entrypoint.sh
+
+# Copy services runner
+COPY deployment/services-runner.sh /usr/local/bin/services-runner.sh
+RUN chmod +x /usr/local/bin/services-runner.sh
+
+# Copy built backend artifacts (assumes you've built them before docker build)
+# If artifacts are missing, build them in CI or add multistage Maven builds.
+COPY services/game-service/target/game-service.jar /srv/services/game-service.jar
+COPY services/purchase-service/target/purchase-service.jar /srv/services/purchase-service.jar
+COPY services/wishlist-service/target/wishlist-service.jar /srv/services/wishlist-service.jar
+COPY services/notification-service/target/notification-service.jar /srv/services/notification-service.jar
+COPY services/auth-user-service/target/auth-service.jar /srv/services/auth-service.jar
+COPY services/storage-service/target/storage-service.jar /srv/services/storage-service.jar
+
+# Expose nginx port
+EXPOSE 80
+
+# Healthcheck
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s CMD curl -f http://localhost/_health || exit 1
+
+# Entrypoint runs the nginx entrypoint script which will substitute template variables
+ENTRYPOINT ["/usr/local/bin/nginx-entrypoint.sh"]
+
+# Default command: start services then nginx (runner uses nginx exec so entrypoint will have written config)
+CMD ["/usr/local/bin/services-runner.sh"]

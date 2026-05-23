@@ -5,6 +5,14 @@ Summary
 -------
 This repo uses a single public web service (the nginx gateway) to expose the API. All backend services remain private or internal. The frontend (Vercel) points to the gateway URL.
 
+Local Docker build
+------------------
+If you build the Fly image manually, include the repository root as the build context so the Dockerfile can copy files from `services/` and `deployment/`:
+
+```powershell
+docker build -t gateway:fly -f deployment/Dockerfile.fly .
+```
+
 Render (gateway)
 -----------------
 1. Create a Render Web Service.
