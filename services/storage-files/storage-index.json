@@ -7,4 +7,184 @@
   "uploadedBy" : "test-user",
   "uploadedAt" : "2026-05-18T18:55:12.718973820",
   "url" : "https://qdohwmucmbjsotaibsbh.supabase.co/storage/v1/object/public/game-files/da2ccfe3-2a41-487f-99d4-648899ae150e.txt"
+}, {
+  "id" : "1bc5eb32-8c6f-437c-8004-41b212a418a7",
+  "fileName" : "coc_logo.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 10862,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/1bc5eb32-8c6f-437c-8004-41b212a418a7.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:06:38.083358925",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/1bc5eb32-8c6f-437c-8004-41b212a418a7.webp"
+}, {
+  "id" : "46240d71-ba01-48ea-ba50-aacf02f1dbd0",
+  "fileName" : "coc_logo.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 10862,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/46240d71-ba01-48ea-ba50-aacf02f1dbd0.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:06:49.332323972",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/46240d71-ba01-48ea-ba50-aacf02f1dbd0.webp"
+}, {
+  "id" : "b0cac39e-e8c6-403e-bc76-c169a2b8840f",
+  "fileName" : "coc_logo.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 10862,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/b0cac39e-e8c6-403e-bc76-c169a2b8840f.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:08:43.660851316",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/b0cac39e-e8c6-403e-bc76-c169a2b8840f.webp"
+}, {
+  "id" : "5d210bbf-ec33-4c30-b253-2e2c0a8ae4ed",
+  "fileName" : "coc_logo.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 10862,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/5d210bbf-ec33-4c30-b253-2e2c0a8ae4ed.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:10:37.935715967",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/5d210bbf-ec33-4c30-b253-2e2c0a8ae4ed.webp"
+}, {
+  "id" : "05e7ec1c-3563-4068-b66f-61a76b67b010",
+  "fileName" : "coc_logo.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 10862,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/05e7ec1c-3563-4068-b66f-61a76b67b010.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:12:01.433467419",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/05e7ec1c-3563-4068-b66f-61a76b67b010.webp"
+}, {
+  "id" : "f315a314-cade-4a27-96ef-47f8fab123c1",
+  "fileName" : "coc_logo.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 10862,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/f315a314-cade-4a27-96ef-47f8fab123c1.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:22:56.195730602",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/f315a314-cade-4a27-96ef-47f8fab123c1.webp"
+}, {
+  "id" : "92c60ee5-53a4-461f-a815-f22fbbb80121",
+  "fileName" : "chrome.exe",
+  "fileType" : "application/x-msdownload",
+  "fileSize" : 3423384,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-files/92c60ee5-53a4-461f-a815-f22fbbb80121.exe",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:23:24.241955117",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-files/92c60ee5-53a4-461f-a815-f22fbbb80121.exe"
+}, {
+  "id" : "cf72b9cc-96d5-475c-97ee-352f9c21211a",
+  "fileName" : "coc2.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 11100,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/cf72b9cc-96d5-475c-97ee-352f9c21211a.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:23:24.665182419",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/cf72b9cc-96d5-475c-97ee-352f9c21211a.webp"
+}, {
+  "id" : "bd5dac8c-3ffb-4631-a57f-938445a96e13",
+  "fileName" : "coc_logo.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 10862,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/bd5dac8c-3ffb-4631-a57f-938445a96e13.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:23:24.855074040",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/bd5dac8c-3ffb-4631-a57f-938445a96e13.webp"
+}, {
+  "id" : "e44ec16a-eece-48da-a44c-2f7790200bbc",
+  "fileName" : "coc1.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 17510,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/e44ec16a-eece-48da-a44c-2f7790200bbc.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:23:24.958436792",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/e44ec16a-eece-48da-a44c-2f7790200bbc.webp"
+}, {
+  "id" : "6071f329-a2de-4294-85d4-a3ad00931d83",
+  "fileName" : "coc3.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 29828,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/6071f329-a2de-4294-85d4-a3ad00931d83.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:23:25.165105093",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/6071f329-a2de-4294-85d4-a3ad00931d83.webp"
+}, {
+  "id" : "806c8abd-2c98-42db-8fdf-7633dbe87ee4",
+  "fileName" : "coc4.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 23720,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/806c8abd-2c98-42db-8fdf-7633dbe87ee4.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:23:25.443238444",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/806c8abd-2c98-42db-8fdf-7633dbe87ee4.webp"
+}, {
+  "id" : "8faefc83-cf22-421e-8143-bf9a6c7c557d",
+  "fileName" : "cr1.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 2304310,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/8faefc83-cf22-421e-8143-bf9a6c7c557d.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:25:30.556938004",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/8faefc83-cf22-421e-8143-bf9a6c7c557d.webp"
+}, {
+  "id" : "f205628a-a765-4aee-8f9c-b9b901484160",
+  "fileName" : "cr4.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 15316,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/f205628a-a765-4aee-8f9c-b9b901484160.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:25:32.528539065",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/f205628a-a765-4aee-8f9c-b9b901484160.webp"
+}, {
+  "id" : "c49f91aa-fd95-429b-995a-0eb9dd698034",
+  "fileName" : "cr5.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 18466,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/c49f91aa-fd95-429b-995a-0eb9dd698034.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:25:32.594323822",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/c49f91aa-fd95-429b-995a-0eb9dd698034.webp"
+}, {
+  "id" : "069b4beb-eab2-480f-8706-78b23875a0a9",
+  "fileName" : "crlogo.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 5130,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/069b4beb-eab2-480f-8706-78b23875a0a9.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:25:33.299418112",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/069b4beb-eab2-480f-8706-78b23875a0a9.webp"
+}, {
+  "id" : "c99cc270-8b77-4680-ae02-d625d4263f5c",
+  "fileName" : "cr2.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 242582,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/c99cc270-8b77-4680-ae02-d625d4263f5c.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:25:36.229321641",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/c99cc270-8b77-4680-ae02-d625d4263f5c.webp"
+}, {
+  "id" : "2cae9670-1990-44eb-a808-fe1f52665895",
+  "fileName" : "cr3.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 225784,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/2cae9670-1990-44eb-a808-fe1f52665895.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:25:36.379271164",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/2cae9670-1990-44eb-a808-fe1f52665895.webp"
+}, {
+  "id" : "7789338b-1f5b-4d03-be1d-5d6760a806cc",
+  "fileName" : "cr1.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 2304310,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/7789338b-1f5b-4d03-be1d-5d6760a806cc.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:25:52.064801821",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/7789338b-1f5b-4d03-be1d-5d6760a806cc.webp"
+}, {
+  "id" : "c04e5690-679e-4066-ba39-aad30ee6fa50",
+  "fileName" : "cr1.webp",
+  "fileType" : "image/webp",
+  "fileSize" : 2304310,
+  "filePath" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/c04e5690-679e-4066-ba39-aad30ee6fa50.webp",
+  "uploadedBy" : "ce027utsavgajera",
+  "uploadedAt" : "2026-06-10T08:28:10.727604142",
+  "url" : "https://wmjdpctpcfxulozvoqtx.supabase.co/storage/v1/object/public/game-images/c04e5690-679e-4066-ba39-aad30ee6fa50.webp"
 } ]

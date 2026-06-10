@@ -137,7 +137,7 @@ function FileMeta({ gameId, purchaseDate }) {
 }
 
 export default function PurchasesPage() {
-  const { user, isNormalUser } = useAuth();
+  const { user, isNormalUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -186,7 +186,7 @@ export default function PurchasesPage() {
   };
 
   useEffect(() => {
-    if (!isNormalUser) {
+    if (authLoading || !user || !isNormalUser) {
       return;
     }
     let active = true;
@@ -205,7 +205,7 @@ export default function PurchasesPage() {
     return () => {
       active = false;
     };
-  }, [isNormalUser, user?.username]);
+  }, [authLoading, isNormalUser, user?.username, user]);
 
   const downloadGame = async (gameId, gameTitle) => {
     if (!gameId) {

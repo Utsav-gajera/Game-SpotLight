@@ -160,7 +160,7 @@ function GameMetadataBadges({ gameId, purchaseDate }) {
 }
 
 export default function WorkspacePage() {
-  const { user, isAdmin, isDeveloper, isNormalUser, refreshSession } = useAuth();
+  const { user, isAdmin, isDeveloper, isNormalUser, refreshSession, loading: authLoading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [profileName, setProfileName] = useState(user?.username || '');
@@ -321,6 +321,10 @@ export default function WorkspacePage() {
   }, [user?.username]);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     let active = true;
     const load = async () => {
       setBusy(true);
@@ -352,7 +356,7 @@ export default function WorkspacePage() {
     return () => {
       active = false;
     };
-  }, [isNormalUser, isDeveloper, isAdmin]);
+  }, [authLoading, isNormalUser, isDeveloper, isAdmin]);
 
   // Load selected game into form
   useEffect(() => {

@@ -3,7 +3,6 @@ package com.gamestore.wishlist.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,14 +26,16 @@ public class JwtService {
             return "dev-wishlist-secret-dev-wishlist-secret".getBytes(StandardCharsets.UTF_8);
         }
 
-        // Try common decoders first (base64, base64url). If decoding fails,
-        // fall back to interpreting the secret as a raw UTF-8 string.
+        if (secret.length() >= 32) {
+            return secret.getBytes(StandardCharsets.UTF_8);
+        }
+
         try {
             return Decoders.BASE64.decode(secret);
-        } catch (DecodingException | IllegalArgumentException ex) {
+        } catch (IllegalArgumentException ex) {
             try {
                 return Decoders.BASE64URL.decode(secret);
-            } catch (DecodingException | IllegalArgumentException ex2) {
+            } catch (IllegalArgumentException ex2) {
                 return secret.getBytes(StandardCharsets.UTF_8);
             }
         }

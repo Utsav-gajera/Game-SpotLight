@@ -19,6 +19,10 @@ function isAuthServiceUnavailable(error) {
   return error?.name === 'TypeError' && /Failed to fetch|NetworkError|ERR_CONNECTION_REFUSED/i.test(message);
 }
 
+function isAuthSessionRejected(error) {
+  return [401, 403].includes(error?.status);
+}
+
 function rankRole(role) {
   switch (role) {
     case 'ADMIN':
@@ -81,6 +85,10 @@ async function loadSessionUser() {
       const profile = await api.auth.session();
       return normalizeUser(profile, undefined, avatarUrl);
     } catch (error) {
+      if (isAuthSessionRejected(error)) {
+        storeAuthToken(null);
+        return null;
+      }
       if (isAuthServiceUnavailable(error)) {
         return null;
       }
@@ -228,7 +236,12 @@ export function AuthProvider({ children }) {
             setUser(nextUser);
           }
         } catch (error) {
-          logger.error('[Auth] app session refresh failed', error);
+          if (isAuthSessionRejected(error)) {
+            storeAuthToken(null);
+            setUser(null);
+          } else if (!isAuthServiceUnavailable(error)) {
+            logger.error('[Auth] app session refresh failed', error);
+          }
         } finally {
           setLoading(false);
         }

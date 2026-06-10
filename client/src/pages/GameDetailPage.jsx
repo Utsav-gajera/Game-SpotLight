@@ -80,7 +80,7 @@ function GalleryImage({ src, alt }) {
 export default function GameDetailPage() {
   const { gameId } = useParams();
   const navigate = useNavigate();
-  const { user, isNormalUser } = useAuth();
+  const { user, isNormalUser, loading: authLoading } = useAuth();
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
@@ -134,7 +134,7 @@ export default function GameDetailPage() {
   }, [gameId]);
 
   useEffect(() => {
-    if (!isNormalUser) {
+    if (authLoading || !user || !isNormalUser) {
       return;
     }
 
@@ -146,11 +146,11 @@ export default function GameDetailPage() {
         setActiveWishlistId(list[0] ? list[0].id || list[0].wishlistId || '' : '');
       })
       .catch(() => {});
-  }, [isNormalUser]);
+  }, [authLoading, isNormalUser, user]);
 
   // Load user purchases and check if game is owned
   useEffect(() => {
-    if (!isNormalUser || !gameId) {
+    if (authLoading || !user || !isNormalUser || !gameId) {
       return;
     }
 
@@ -164,7 +164,7 @@ export default function GameDetailPage() {
         setIsOwned(owned);
       })
       .catch(() => {});
-  }, [isNormalUser, gameId]);
+  }, [authLoading, isNormalUser, gameId, user]);
 
   useEffect(() => {
     setReviewPage(1);

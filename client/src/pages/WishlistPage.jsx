@@ -47,7 +47,7 @@ function StepCard({ step, title, text }) {
 }
 
 export default function WishlistPage() {
-  const { user, isNormalUser } = useAuth();
+  const { user, isNormalUser, loading: authLoading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [wishlists, setWishlists] = useState([]);
@@ -117,7 +117,7 @@ export default function WishlistPage() {
   };
 
   useEffect(() => {
-    if (!isNormalUser) {
+    if (authLoading || !user || !isNormalUser) {
       return;
     }
     let active = true;
@@ -136,7 +136,7 @@ export default function WishlistPage() {
     return () => {
       active = false;
     };
-  }, [isNormalUser]);
+  }, [authLoading, isNormalUser, user]);
 
   const createWishlist = async () => {
     if (!wishlistName.trim()) {

@@ -81,6 +81,10 @@ function normalizeGames(payload) {
   return normalizeGame(payload);
 }
 
+function hasAppToken() {
+  return Boolean(localStorage.getItem(TOKEN_KEY));
+}
+
 export async function request(path, options = {}) {
   const { body, headers = {}, ...rest } = options;
   const finalHeaders = { ...headers };
@@ -105,6 +109,9 @@ export async function request(path, options = {}) {
 
   const payload = await parseResponse(response);
   if (!response.ok) {
+    if ([401, 403].includes(response.status) && hasAppToken()) {
+      storeAuthToken(null);
+    }
     const error = new Error(extractMessage(payload, response.statusText));
     error.status = response.status;
     error.payload = payload;
@@ -216,6 +223,9 @@ async function requestWithRoot(root, path, options = {}) {
 
   const payload = await parseResponse(response);
   if (!response.ok) {
+    if ([401, 403].includes(response.status) && hasAppToken()) {
+      storeAuthToken(null);
+    }
     const error = new Error(extractMessage(payload, response.statusText));
     error.status = response.status;
     error.payload = payload;
@@ -335,11 +345,31 @@ export const api = {
       }
       return payload;
     },
-    wishlistList: () => requestWithRoot(WISHLIST_API_ROOT, '/user/wishlist'),
-    wishlistCreate: (name) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/create?name=${encodeURIComponent(name)}`, { method: 'POST' }),
+    wishlistList: () => {
+      if (!hasAppToken()) {
+        return Promise.resolve([]);
+      }
+      return requestWithRoot(WISHLIST_API_ROOT, '/user/wishlist');
+    },
+    wishlistCreate: (name) => {
+      if (!hasAppToken()) {
+        return Promise.reject(new Error('Sign in to manage wishlists.'));
+      }
+      return requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/create?name=${encodeURIComponent(name)}`, { method: 'POST' });
+    },
     wishlistById: (wishlistId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}`),
-    wishlistDelete: (wishlistId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}`, { method: 'DELETE' }),
-    wishlistAdd: (wishlistId, gameId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}/add/${gameId}`, { method: 'POST' }),
+    wishlistDelete: (wishlistId) => {
+      if (!hasAppToken()) {
+        return Promise.reject(new Error('Sign in to manage wishlists.'));
+      }
+      return requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}`, { method: 'DELETE' });
+    },
+    wishlistAdd: (wishlistId, gameId) => {
+      if (!hasAppToken()) {
+        return Promise.reject(new Error('Sign in to manage wishlists.'));
+      }
+      return requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}/add/${gameId}`, { method: 'POST' });
+    },
     wishlistRemove: (wishlistId, gameId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}/remove/${gameId}`, { method: 'DELETE' }),
     wishlistUpdate: (wishlistId, oldGameId, newGameId) => requestWithRoot(WISHLIST_API_ROOT, `/user/wishlist/${wishlistId}/update/${oldGameId}/${newGameId}`, { method: 'PUT' })
   },

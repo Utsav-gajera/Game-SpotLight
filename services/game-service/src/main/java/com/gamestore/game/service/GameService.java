@@ -207,21 +207,25 @@ public class GameService {
             return List.of();
         }
 
-        List<String> ids = openSearchService.similarGameIds(baseGame, limit);
-        if (!ids.isEmpty()) {
-            List<GameDTO> ordered = new ArrayList<>();
-            for (String id : ids) {
-                if (gameId.equals(id)) {
-                    continue;
+        try {
+            List<String> ids = openSearchService.similarGameIds(baseGame, limit);
+            if (!ids.isEmpty()) {
+                List<GameDTO> ordered = new ArrayList<>();
+                for (String id : ids) {
+                    if (gameId.equals(id)) {
+                        continue;
+                    }
+                    GameDTO game = getGameById(id);
+                    if (game != null) {
+                        ordered.add(game);
+                    }
                 }
-                GameDTO game = getGameById(id);
-                if (game != null) {
-                    ordered.add(game);
+                if (!ordered.isEmpty()) {
+                    return ordered;
                 }
             }
-            if (!ordered.isEmpty()) {
-                return ordered;
-            }
+        } catch (RuntimeException ex) {
+            System.err.println("[CACHE ERROR] similarGames OpenSearch lookup failed, returning empty list: " + ex.getMessage());
         }
 
         return List.of();
