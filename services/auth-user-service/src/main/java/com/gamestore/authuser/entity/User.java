@@ -1,24 +1,21 @@
 package com.gamestore.authuser.entity;
 
 import org.springframework.data.annotation.CreatedDate;
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.UUID;
 import java.util.UUID;
 
 
@@ -43,10 +40,9 @@ public class User {
     @Column(nullable = false)
     private String passwordHash;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
-    private Set<String> roles = new LinkedHashSet<>();
+    private Role role = Role.NORMAL_USER;
 
     @Column(nullable = false)
     private boolean developerOptIn = false;
@@ -60,8 +56,8 @@ public class User {
         if (id == null || id.isBlank()) {
             id = UUID.randomUUID().toString();
         }
-        if (roles == null) {
-            roles = new LinkedHashSet<>();
+        if (role == null) {
+            role = Role.NORMAL_USER;
         }
         if (createdAt == null) {
             createdAt = Instant.now();
@@ -108,12 +104,12 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
-    public Set<String> getRoles() {
-        return roles;
+    public Role getRole() {
+        return role;
     }
 
-    public void setRoles(Set<String> roles) {
-        this.roles = roles;
+    public void setRole(Role role) {
+        this.role = role;
     }
 
     public boolean isDeveloperOptIn() {

@@ -17,6 +17,6 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     boolean existsByEmailIgnoreCase(String email);
 
-    @Query("select case when count(u) > 0 then true else false end from User u join u.roles r where upper(r) = upper(:role)")
-    boolean existsByRole(@Param("role") String role);
+    @Query("select case when count(u) > 0 then true else false end from User u where u.role = :role")
+    boolean existsByRole(@Param("role") com.gamestore.authuser.entity.Role role);
 }

@@ -59,15 +59,21 @@ public class JwtService {
         this.expirationSeconds = expirationSeconds;
     }
 
-    public String generateToken(String username, Set<String> roles) {
+    public String generateToken(String username, String role) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .setSubject(username)
-                .claim("roles", roles)
+                .claim("role", role)
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(now.plusSeconds(expirationSeconds)))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    // Backwards-compatible overload: accepts a set and uses the first role if present
+    public String generateToken(String username, java.util.Set<String> roles) {
+        String role = roles == null || roles.isEmpty() ? "NORMAL_USER" : roles.iterator().next();
+        return generateToken(username, role);
     }
 
     public Optional<String> parseUsername(String token) {
@@ -75,11 +81,9 @@ public class JwtService {
     }
 
     public List<String> parseRoles(String token) {
-        Object roles = parseClaims(token).get("roles");
-        if (roles instanceof List<?> list) {
-            return list.stream().map(String::valueOf).toList();
-        }
-        return List.of();
+        Object role = parseClaims(token).get("role");
+        if (role == null) return List.of();
+        return List.of(String.valueOf(role));
     }
 
     private Claims parseClaims(String token) {

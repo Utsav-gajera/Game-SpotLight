@@ -80,13 +80,11 @@ public class AuthService {
         user.setEmail(normalizedEmail);
         user.setDisplayName(request.displayName() == null || request.displayName().isBlank() ? request.username().trim() : request.displayName().trim());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        Set<String> roles = new LinkedHashSet<>();
-        String normalizedRole = normalizeRole(request.role());
-        if ("ADMIN".equals(normalizedRole) && userRepository.existsByRole("ADMIN")) {
+        com.gamestore.authuser.entity.Role role = normalizeRole(request.role());
+        if (role == com.gamestore.authuser.entity.Role.ADMIN && userRepository.existsByRole(com.gamestore.authuser.entity.Role.ADMIN)) {
             throw new IllegalArgumentException("Only one admin account is allowed");
         }
-        roles.add(normalizedRole);
-        user.setRoles(roles);
+        user.setRole(role);
 
         User saved = userRepository.save(user);
         return toResponse(saved);
@@ -100,13 +98,13 @@ public class AuthService {
         User user = userRepository.findByUsernameIgnoreCase(request.username())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Set<String> normalizedRoles = normalizeRoles(user.getRoles());
-        if (!normalizedRoles.equals(user.getRoles())) {
-            user.setRoles(normalizedRoles);
+        // ensure role present
+        if (user.getRole() == null) {
+            user.setRole(com.gamestore.authuser.entity.Role.NORMAL_USER);
             userRepository.save(user);
         }
 
-        String token = jwtService.generateToken(user.getUsername(), normalizedRoles);
+        String token = jwtService.generateToken(user.getUsername(), user.getRole().name());
         return new AuthResponse(token, jwtService.getExpirationSeconds(), toResponse(user));
     }
 
@@ -141,15 +139,12 @@ public class AuthService {
             log.info("Updated displayName for user id={}", user.getId());
         }
 
-        Set<String> normalizedRoles = normalizeRoles(user.getRoles());
-        if (!normalizedRoles.equals(user.getRoles())) {
-            log.info("Normalizing roles for user id={}. OldRoles={} NewRoles={}", user.getId(), user.getRoles(), normalizedRoles);
-            user.setRoles(normalizedRoles);
+        if (user.getRole() == null) {
+            user.setRole(com.gamestore.authuser.entity.Role.NORMAL_USER);
             user = userRepository.save(user);
-            log.info("Roles updated for user id={}", user.getId());
         }
 
-        String token = jwtService.generateToken(user.getUsername(), normalizedRoles);
+        String token = jwtService.generateToken(user.getUsername(), user.getRole().name());
         return new AuthResponse(token, jwtService.getExpirationSeconds(), toResponse(user));
     }
 
@@ -167,33 +162,21 @@ public class AuthService {
         User user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Set<String> normalizedRoles = normalizeRoles(user.getRoles());
-        if (!normalizedRoles.contains("DEVELOPER") && !normalizedRoles.contains("ADMIN")) {
+        com.gamestore.authuser.entity.Role current = user.getRole() == null ? com.gamestore.authuser.entity.Role.NORMAL_USER : user.getRole();
+        if (current != com.gamestore.authuser.entity.Role.DEVELOPER && current != com.gamestore.authuser.entity.Role.ADMIN) {
             if (!user.isDeveloperOptIn()) {
                 throw new IllegalArgumentException("This account is locked as a normal user");
             }
-            Set<String> promotedRoles = new LinkedHashSet<>();
-            promotedRoles.add("DEVELOPER");
-            promotedRoles.addAll(normalizedRoles);
-            user.setRoles(promotedRoles);
+            user.setRole(com.gamestore.authuser.entity.Role.DEVELOPER);
             user = userRepository.save(user);
-            normalizedRoles = normalizeRoles(user.getRoles());
-            if (!normalizedRoles.equals(user.getRoles())) {
-                user.setRoles(normalizedRoles);
-                user = userRepository.save(user);
-            }
-        } else if (!normalizedRoles.equals(user.getRoles())) {
-            user.setRoles(normalizedRoles);
-            user = userRepository.save(user);
-            normalizedRoles = normalizeRoles(user.getRoles());
         }
 
-        String token = jwtService.generateToken(user.getUsername(), normalizedRoles);
+        String token = jwtService.generateToken(user.getUsername(), user.getRole().name());
         return new AuthResponse(token, jwtService.getExpirationSeconds(), toResponse(user));
     }
 
     public UserResponse bootstrapFirstAdmin(RegisterRequest request) {
-        if (userRepository.existsByRole("ADMIN")) {
+        if (userRepository.existsByRole(com.gamestore.authuser.entity.Role.ADMIN)) {
             throw new IllegalArgumentException("Admin account already exists. Use the normal registration flow.");
         }
 
@@ -214,7 +197,7 @@ public class AuthService {
         user.setEmail(normalizedEmail);
         user.setDisplayName(request.displayName() == null || request.displayName().isBlank() ? request.username().trim() : request.displayName().trim());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setRoles(new LinkedHashSet<>(Set.of("ADMIN")));
+        user.setRole(com.gamestore.authuser.entity.Role.ADMIN);
 
         User saved = userRepository.save(user);
         return toResponse(saved);
@@ -246,9 +229,8 @@ public class AuthService {
         int updated = 0;
         List<User> users = userRepository.findAll();
         for (User user : users) {
-            Set<String> normalizedRoles = normalizeRoles(user.getRoles());
-            if (!normalizedRoles.equals(user.getRoles())) {
-                user.setRoles(new LinkedHashSet<>(normalizedRoles));
+            if (user.getRole() == null) {
+                user.setRole(com.gamestore.authuser.entity.Role.NORMAL_USER);
                 userRepository.save(user);
                 updated++;
             }
@@ -257,13 +239,12 @@ public class AuthService {
     }
 
     private UserResponse toResponse(User user) {
-        Set<String> normalizedRoles = normalizeRoles(user.getRoles());
         return new UserResponse(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getDisplayName(),
-                normalizedRoles,
+                user.getRole().name(),
                 user.getCreatedAt()
         );
     }
@@ -302,7 +283,7 @@ public class AuthService {
         user.setDisplayName(displayName == null || displayName.isBlank() ? email : displayName.trim());
         user.setUsername(generateUniqueUsername(user.getDisplayName(), email));
         user.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
-        user.setRoles(new LinkedHashSet<>(Set.of("NORMAL_USER")));
+        user.setRole(com.gamestore.authuser.entity.Role.NORMAL_USER);
         user.setDeveloperOptIn(developerOptIn);
         log.info("Persisting new Supabase-linked user username={} email={}", user.getUsername(), user.getEmail());
         User saved = userRepository.save(user);
@@ -362,37 +343,17 @@ public class AuthService {
         return value == null || value.isNull() ? null : value.asText();
     }
 
-    private Set<String> normalizeRoles(Set<String> roles) {
-        if (roles == null || roles.isEmpty()) {
-            return Set.of("NORMAL_USER");
-        }
-
-        Set<String> normalized = roles.stream()
-                .filter(role -> role != null && !role.isBlank())
-                .map(role -> role.trim().toUpperCase(Locale.ROOT))
-                .map(role -> "USER".equals(role) ? "NORMAL_USER" : role)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-
-        if (normalized.contains("ADMIN")) {
-            return Set.of("ADMIN");
-        }
-
-        if (normalized.contains("DEVELOPER")) {
-            normalized.remove("NORMAL_USER");
-        }
-
-        return normalized;
-    }
-
-    private String normalizeRole(String role) {
+    private com.gamestore.authuser.entity.Role normalizeRole(String role) {
         if (role == null || role.isBlank()) {
-            return "NORMAL_USER";
+            return com.gamestore.authuser.entity.Role.NORMAL_USER;
         }
 
         String normalized = role.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
-            case "NORMAL_USER", "DEVELOPER", "ADMIN" -> normalized;
-            case "USER" -> "NORMAL_USER";
+            case "NORMAL_USER" -> com.gamestore.authuser.entity.Role.NORMAL_USER;
+            case "DEVELOPER" -> com.gamestore.authuser.entity.Role.DEVELOPER;
+            case "ADMIN" -> com.gamestore.authuser.entity.Role.ADMIN;
+            case "USER" -> com.gamestore.authuser.entity.Role.NORMAL_USER;
             default -> throw new IllegalArgumentException("Unsupported role: " + role);
         };
     }
