@@ -112,7 +112,15 @@
             <artifactId>mongodb</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- OpenSearch Java client (typed query builders) -->
+        <dependency>
+            <groupId>org.opensearch.client</groupId>
+            <artifactId>opensearch-java</artifactId>
+            <version>2.19.0</version>
+        </dependency>
     </dependencies>
+
 
     <build>
         <plugins>

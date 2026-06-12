@@ -11,11 +11,11 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import jakarta.annotation.PostConstruct;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 @Slf4j
 @Service
@@ -216,10 +216,7 @@ public class OpenSearchService {
             String left = kv[0].trim().toLowerCase();
             String right = kv[1].trim().toLowerCase();
             if (!left.isEmpty() && !right.isEmpty()) {
-                // Use bidirectional comma format for multi-word synonyms
-                // This allows both "coc" and "clash of clans" to match each other
                 rules.add(left + ", " + right);
-                // Also add reverse direction to ensure proper matching
                 if (!left.equals(right)) {
                     rules.add(right + ", " + left);
                 }
@@ -286,10 +283,6 @@ public class OpenSearchService {
         }
     }
 
-    /**
-     * Returns true when OpenSearch is enabled AND live sync operations (index updates/deletes)
-     * are permitted by configuration.
-     */
     public boolean isSyncEnabled() {
         return isEnabled() && syncEnabled;
     }
@@ -303,7 +296,7 @@ public class OpenSearchService {
         log.info("Starting OpenSearch index backfill with {} game(s)", games.size());
         int indexed = 0;
         int failed = 0;
-        
+
         for (GameDTO game : games) {
             try {
                 indexGame(game);
@@ -313,7 +306,7 @@ public class OpenSearchService {
                 failed++;
             }
         }
-        
+
         log.info("OpenSearch backfill completed: {} indexed, {} failed", indexed, failed);
     }
 
@@ -329,20 +322,20 @@ public class OpenSearchService {
                 "_source", List.of("id"),
                 "query", Map.of(
                         "multi_match", Map.of(
-                                        "query", query,
-                                        "fields", List.of(
-                                            "abbreviation^10",  // Abbreviations get highest priority
-                                            "title^5",
-                                            "description^3",
-                                            "genre^2",
-                                            "developer^2",
-                                            "platform^2",
-                                            "ageRating",
-                                            "systemRequirements"
-                                        ),
-                                        "fuzziness", "AUTO",
-                                        "prefix_length", 0  // Allow matching from the start
-                                )
+                                "query", query,
+                                "fields", List.of(
+                                        "abbreviation^10",
+                                        "title^5",
+                                        "description^3",
+                                        "genre^2",
+                                        "developer^2",
+                                        "platform^2",
+                                        "ageRating",
+                                        "systemRequirements"
+                                ),
+                                "fuzziness", "AUTO",
+                                "prefix_length", 0
+                        )
                 )
         );
 
@@ -359,22 +352,21 @@ public class OpenSearchService {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("size", Math.max(1, Math.min(size, 100)));
         body.put("from", Math.max(0, from));
-        // Don't limit _source - get all fields to ensure id is included
         body.put("query", Map.of(
                 "multi_match", Map.of(
                         "query", title,
                         "fields", List.of(
-                            "abbreviation^10",  // Abbreviations get highest priority
-                            "title^5",
-                            "description^3",
-                            "genre^2",
-                            "developer^2",
-                            "platform^2",
-                            "ageRating",
-                            "systemRequirements"
+                                "abbreviation^10",
+                                "title^5",
+                                "description^3",
+                                "genre^2",
+                                "developer^2",
+                                "platform^2",
+                                "ageRating",
+                                "systemRequirements"
                         ),
                         "fuzziness", "AUTO",
-                        "prefix_length", 0  // Allow matching from the start, important for short abbreviations
+                        "prefix_length", 0
                 )
         ));
 
@@ -549,7 +541,6 @@ public class OpenSearchService {
             responseBody.put("query", trimmedQuery);
             responseBody.put("suggestions", suggestions);
             responseBody.put("didYouMean", didYouMean);
-            log.debug("OpenSearch completion suggestions query='{}' suggestions={}", trimmedQuery, suggestions);
             return responseBody;
         } catch (Exception ex) {
             log.warn("OpenSearch completion suggester failed for query='{}': {}", trimmedQuery, ex.getMessage());
@@ -569,8 +560,6 @@ public class OpenSearchService {
         if (!isEnabled() || game == null) {
             return List.of();
         }
-
-        log.info("OpenSearch similar-games search requested for gameId={} title='{}'", game.getId(), game.getTitle());
 
         Map<String, Object> body = Map.of(
                 "size", Math.max(1, Math.min(size, 20)),
@@ -611,14 +600,12 @@ public class OpenSearchService {
         try {
             ResponseEntity<String> response = executeWithRetry(() -> exchangeJson(HttpMethod.POST, "/" + indexName + "/_search", body));
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().isBlank()) {
-                log.info("OpenSearch search returned no usable response from index '{}'", indexName);
                 return new SearchPage(List.of(), 0L);
             }
 
             JsonNode root = objectMapper.readTree(response.getBody());
             JsonNode hits = root.path("hits").path("hits");
             if (!hits.isArray()) {
-                log.warn("OpenSearch response hits is not an array: {}", hits);
                 return new SearchPage(List.of(), 0L);
             }
 
@@ -627,23 +614,17 @@ public class OpenSearchService {
                 JsonNode hit = hits.get(i);
                 String id = hit.path("_source").path("id").asText(null);
                 String fallbackId = hit.path("_id").asText(null);
-                
-                log.debug("Hit {}: _source.id='{}', _id='{}', _source={}", i, id, fallbackId, hit.path("_source"));
-                
+
                 if (id == null || id.isBlank()) {
                     id = fallbackId;
                 }
                 if (id != null && !id.isBlank()) {
                     ids.add(id);
-                } else {
-                    log.warn("Hit {} has no valid ID. _source={}", i, hit.path("_source"));
                 }
             }
             long total = root.path("hits").path("total").path("value").asLong(hits.size());
-            log.info("OpenSearch search returned {} result(s) from index '{}', extracted {} IDs", total, indexName, ids.size());
             return new SearchPage(ids, total);
         } catch (Exception ex) {
-            log.warn("OpenSearch query failed: {}", ex.getMessage());
             return new SearchPage(List.of(), 0L);
         }
     }
@@ -668,9 +649,10 @@ public class OpenSearchService {
         document.put("releaseDate", game.getReleaseDate());
         document.put("totalPurchases", game.getTotalPurchases());
         document.put("totalDownloads", game.getTotalDownloads());
+
         List<String> inputs = new ArrayList<>();
         addSuggestionInput(inputs, game.getTitle());
-        addSuggestionInput(inputs, game.getAbbreviation());  // Include abbreviation in suggestions
+        addSuggestionInput(inputs, game.getAbbreviation());
         addSuggestionInput(inputs, game.getDeveloper());
         addSuggestionInput(inputs, game.getGenre());
 
@@ -747,3 +729,4 @@ public class OpenSearchService {
         return scheme + "://" + host + ":" + port;
     }
 }
+
