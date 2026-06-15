@@ -1,102 +1,183 @@
-# Game-SpotLight
-GameSpotlight is now split into a React client and a Spring Boot server.
+# 🎮 GameSpotlight
 
-## Structure
-- `client/` - React + Vite + Tailwind storefront UI
-- `server/` - Spring Boot API, security, MongoDB, and backend run scripts
+GameSpotlight is a modern, high-performance web storefront for exploring, reviewing, and downloading games. The project is built using a **Microservices Architecture** with a **Spring Boot** backend ecosystem, an **Nginx Gateway** reverse proxy, and a **React + Vite** frontend client.
 
-## Backend
-From the `server/` folder:
+---
 
-```powershell
-cd server
-.\mvnw.cmd spring-boot:run
+## 🏗️ Architecture & Component Overview
+
+GameSpotlight is split into a modular frontend and containerized, specialized backend microservices:
+
+```mermaid
+graph TD
+    User([User Browser]) -->|HTTP / WSL| Frontend[React Client - Port 5173]
+    User -->|HTTP API Requests| Nginx[Nginx Gateway - Port 8080]
+    
+    subgraph Services [Backend Microservices]
+        Nginx -->|/api/auth/**| AuthSvc[Auth User Service - Port 8087]
+        Nginx -->|/api/games/**| GameSvc[Game Service - Port 8082]
+        Nginx -->|/api/purchases/**| PurchaseSvc[Purchase Service - Port 8083]
+        Nginx -->|/api/wishlist/**| WishlistSvc[Wishlist Service - Port 8084]
+        Nginx -->|/api/storage/**| StorageSvc[Storage Service - Port 8085]
+        
+        GameSvc -.->|Kafka Event: gameCreated| NotificationSvc[Notification Service - Port 8086]
+        PurchaseSvc -.->|Kafka Event: purchaseCreated| NotificationSvc
+        GameSvc -.->|Kafka Event: downloadCreated| NotificationSvc
+        
+        GameSvc <-->|Internal API| StorageSvc
+        GameSvc <-->|Internal API| AuthSvc
+        PurchaseSvc <-->|Internal API| GameSvc
+        PurchaseSvc <-->|Internal API| AuthSvc
+    end
+
+    subgraph Datastores [Datastores & Infrastructure]
+        AuthSvc -->|SQL| Postgres[(PostgreSQL)]
+        PurchaseSvc -->|SQL| Postgres
+        PurchaseSvc -->|Cache/Idempotency| Redis[(Redis Cloud)]
+        
+        GameSvc -->|NoSQL| Mongo[(MongoDB Atlas)]
+        GameSvc -->|Cache/Idempotency| Redis
+        GameSvc -->|Sync & Search| OpenSearch[(OpenSearch)]
+        
+        WishlistSvc -->|NoSQL| Mongo
+        
+        StorageSvc -->|Object Storage| Supabase[(Supabase Storage)]
+        StorageSvc -->|Local Files| LocalStorage[(Local /app/files)]
+    end
 ```
 
-Or use the bundled script:
+### Microservices Summary
 
-```powershell
-cd server
-.\run.ps1
+| Service | Port | Database / Middleware | Primary Responsibility |
+| :--- | :---: | :--- | :--- |
+| **Nginx Gateway** | `8080` | None (Nginx Reverse Proxy) | Dynamic routing of API routes, SSL termination, and client abstraction. |
+| **React Client** | `5173` | Local Storage | Modern catalog UI built with Vite, Tailwind CSS, and Supabase integration. |
+| **Auth User Service** | `8087` | PostgreSQL | User registrations, credential authentication, user profiles, and JWT generation. |
+| **Game Service** | `8082` | MongoDB, Redis, OpenSearch | Game metadata catalogue, OpenSearch synchronization, user reviews, and statistics. |
+| **Purchase Service** | `8083` | PostgreSQL, Redis | Idempotent transaction processing, purchase state logs, and invoice email triggers. |
+| **Storage Service** | `8085` | Local Disk / Supabase | Game asset handling (cover/gallery images to public URLs, private file downloads). |
+| **Wishlist Service** | `8084` | MongoDB | Store and manage user-specific wishlist game records. |
+| **Notification Service**| `8086` | None (Kafka + Brevo SMTP) | Async worker consuming Kafka event topics (`game.created`, `game.purchases`) to send email notifications. |
+
+---
+
+## 📁 Repository Structure
+
+```
+Game-SpotLight/
+├── client/                 # React UI + Vite + Tailwind CSS storefront
+├── services/               # Microservices root directory
+│   ├── auth-user-service/  # User & Authentication service (Spring Boot)
+│   ├── game-service/       # Game directory and catalog service (Spring Boot)
+│   ├── purchase-service/   # Billing and purchases service (Spring Boot)
+│   ├── wishlist-service/   # Wishlist service (Spring Boot)
+│   ├── storage-service/    # Asset file & Image storage service (Spring Boot)
+│   ├── notification-service/# Kafka mail alerts service (Spring Boot)
+│   ├── nginx/              # Nginx Gateway reverse proxy configuration
+│   ├── storage-files/      # Local volume binding for file storage testing
+│   └── docker-compose.yml  # Local orchestrator for developing multi-service flows
+├── envs/                   # Pre-defined environment variable examples
+├── scripts/                # Verification utilities (e.g. pre-commit hooks, end-to-end event tests)
+├── MIGRATIONS.md           # Instructions on databases and manual Flyway schema changes
+├── SECRETS.md              # Instructions for secure environment variables setup
+└── TODO.md                 # Current roadmap and migration checkmarks
 ```
 
-Tests:
+---
+
+## ⚙️ Local Configuration & Security
+
+To prevent leaking production secrets or API credentials, all microservices load configuration properties from environment variables or custom `.env` files.
+
+> [!WARNING]
+> Never commit `.env` files to Git. The pre-commit hook in `scripts/` will automatically block commits containing raw credentials.
+
+### Setup Environment Files
+
+Copy the provided environment templates and supply your own keys/connection URIs:
+
+1. **Root Services Configuration**:
+   ```bash
+   cd services
+   cp .env.example .env
+   ```
+2. **Individual Service Configurations**:
+   ```bash
+   cp auth-user-service/.env.example auth-user-service/.env
+   cp game-service/.env.example game-service/.env
+   cp purchase-service/.env.example purchase-service/.env
+   cp storage-service/.env.example storage-service/.env
+   cp wishlist-service/.env.example wishlist-service/.env
+   cp notification-service/.env.example notification-service/.env
+   ```
+
+3. **Required Credentials**:
+   Refer to [SECRETS.md](file:///c:/Users/YUG/OneDrive/Documents/Desktop/gm2/Game-SpotLight/SECRETS.md) for generating:
+   - **PostgreSQL JDBC URLs** (for Auth and Purchase)
+   - **MongoDB Atlas Connection Strings** (for Game, Wishlist, Storage)
+   - **JWT Secret** (shared, generate using `openssl rand -base64 32`)
+   - **Kafka (Aiven)** and **Redis** connection keys
+   - **Supabase credentials** (Storage URLs + role keys)
+
+---
+
+## 🚀 Running GameSpotlight Locally
+
+### The Recommended Way: Docker Compose
+
+Docker Compose builds all services and runs them in a unified network. The React UI is launched inside the container, proxying backends automatically.
+
+1. Ensure Docker Desktop is running.
+2. From the `services/` directory, launch the services:
+   ```bash
+   cd services
+   docker compose up --build
+   ```
+3. Once running, open:
+   - **Frontend application**: `http://localhost:5173`
+   - **Nginx API gateway root**: `http://localhost:8080/api`
+
+### Alternative: Running Services Manually (Bare Metal)
+
+If you are developing a single service, you can run it via Maven. For example, to run the **Game Service**:
 
 ```powershell
-cd server
-.\mvnw.cmd -q test
+cd services/game-service
+mvn spring-boot:run
 ```
 
-## Frontend
-From the `client/` folder:
-
+And for the **Frontend**:
 ```powershell
 cd client
 npm install
 npm run dev
 ```
 
-The Vite dev server proxies `/api` to `http://localhost:8080`, so the React app can use the same session-based backend endpoints without extra CORS setup.
+---
 
-## Local configuration
-Sensitive backend config should stay out of version control.
+## 🔬 Testing & Verification
 
-- `server/src/main/resources/application-local.properties` for local runtime overrides.
-- `server/src/test/resources/application-local.properties` for tests.
-- `.env.example` at the repo root shows the recommended environment variables.
-
-Example environment variables:
-
+### 🛡️ Pre-commit Security Hook Setup
+To ensure you do not commit raw passwords or tokens:
 ```powershell
-SPRING_DATA_MONGODB_URI="mongodb+srv://<user>:<password>@cluster0.xyz.mongodb.net/gamestore2?retryWrites=true&w=majority"
-SPRING_SERVER_PORT=8080
+# Set up hooks configuration
+git config core.hooksPath .git/hooks
+
+# Copy Hook script (Windows)
+New-Item -ItemType Directory -Path .git/hooks -Force | Out-Null
+Copy-Item scripts/pre-commit-hook.ps1 -Destination .git/hooks/pre-commit
+```
+*(Refer to [PRE-COMMIT-SETUP.md](file:///c:/Users/YUG/OneDrive/Documents/Desktop/gm2/Game-SpotLight/scripts/PRE-COMMIT-SETUP.md) for macOS/Linux commands).*
+
+### 📨 Kafka Event Flow E2E Test
+The event-driven pipelines (Purchase events $\rightarrow$ email notifications $\rightarrow$ idempotent MongoDB/OpenSearch updates) can be simulated using:
+```powershell
+# Execute the testing script
+.\scripts\kafka_e2e_test.ps1
 ```
 
-`SPRING_DATA_MONGODB_URI` maps directly to `spring.data.mongodb.uri`.
-
-## Supabase storage setup
-Buckets already created in Supabase can be connected with environment variables.
-
-Required env vars:
-
-```powershell
-AUTH_SUPABASE_URL="https://<auth-project-ref>.supabase.co"
-AUTH_SUPABASE_ANON_KEY="<auth-anon-key>"
-STORAGE_SUPABASE_URL="https://<storage-project-ref>.supabase.co"
-STORAGE_SUPABASE_KEY="<storage-service-role-key>"
+### ☕ Running Service Tests
+Each service includes Unit and Integration Tests (IT). Run tests inside a service folder using Maven:
+```bash
+mvn test
 ```
-
-Optional bucket names (defaults shown):
-
-```powershell
-SUPABASE_IMAGES_BUCKET=game-images
-SUPABASE_FILES_BUCKET=game-files
-SUPABASE_FILES_PUBLIC=false
-```
-
-Optional validation limits (bytes):
-
-```powershell
-SUPABASE_MAX_IMAGE_BYTES=5242880
-SUPABASE_MAX_GAME_BYTES=524288000
-```
-
-How uploads now work:
-- The developer workspace submits game metadata plus files as `multipart/form-data`.
-- The backend uploads files to Supabase Storage and stores returned public URLs in MongoDB.
-- Cover and gallery images are stored as public URLs.
-- Game files are stored as private references when `SUPABASE_FILES_PUBLIC=false`.
-- Downloads are generated through signed URLs (default expiry 1 hour).
-- Supported file fields: `coverImage`, `gameFile`, and multiple `galleryImages`.
-- Metadata is submitted as a JSON string in the `metadata` form part.
-
-Developer endpoints:
-- `POST /api/developer/games/add-with-files`
-- `PUT /api/developer/games/{gameId}/with-files`
-
-User secure download endpoint:
-- `GET /api/user/games/{gameId}/download-url`
-
-Asset lifecycle:
-- Replaced files are deleted from Supabase during developer file updates.
-- Game assets are deleted from Supabase when a game is deleted.
